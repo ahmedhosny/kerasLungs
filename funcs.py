@@ -15,7 +15,7 @@ from sklearn.metrics import roc_auc_score
 import time
 
 
-RUN = "2"
+RUN = "3"
 
 #
 #
@@ -30,7 +30,7 @@ RUN = "2"
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3","oncomap" ,"oncopanel"]  # ,,"moffitt","moffittSpore","nsclc_rt"
+    trainList = ["lung1","lung3","oncomap" ]  # ,, ,"moffitt","moffittSpore", "oncopanel"]
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -387,9 +387,6 @@ class Histories(keras.callbacks.Callback):
         model_json = self.model.to_json()
         with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
             json_file.write(model_json)
-        # serialize weights to HDF5
-        self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
-        print("Saved model to disk")
 
         return
 
@@ -424,6 +421,12 @@ class Histories(keras.callbacks.Callback):
         print ("wtf1")
         auc1 , auc2 = AUC(  allLabels ,  allLogits )
         print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+        # before appending, check if this auc is the highest in all the lsit
+
+        if all(auc1>i for i in self.auc):
+            self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+            print("Saved model to disk")
+
         self.auc.append(auc1)
         print ("wtf2")
 

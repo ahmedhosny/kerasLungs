@@ -10,7 +10,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.visualize_util import plot
 
-
+print('March1-1')
 
 dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 #
@@ -42,7 +42,8 @@ with tf.device('/gpu:0'):
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
 
-    myOptimizer = keras.optimizers.RMSprop(lr=0.00001, rho=0.9, epsilon=1e-08, decay=0.0) 
+    myOptimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
+    # myOptimizer = keras.optimizers.RMSprop(lr=0.0001, rho=0.9, epsilon=1e-08, decay=0.0) 
     model.compile(loss='categorical_crossentropy', optimizer=myOptimizer, metrics=['accuracy'])
 
     # save model
