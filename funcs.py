@@ -10,12 +10,13 @@ import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Convolution2D, MaxPooling2D
+from keras.layers import Convolution2D, MaxPooling2D, Convolution3D , MaxPooling3D
 from sklearn.metrics import roc_auc_score
 import time
 
 
-RUN = "3"
+RUN = "4"
+mode = "2d"
 
 #
 #
@@ -30,7 +31,7 @@ RUN = "3"
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3","oncomap" ]  # ,, ,"moffitt","moffittSpore", "oncopanel"]
+    trainList = ["lung1","lung3","oncomap", "oncopanel" , "moffitt","moffittSpore" ] 
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -43,6 +44,7 @@ def manageDataFrames():
     ( pd.notnull( dataFrame["surv2yr"] ) ) &
     ( pd.notnull( dataFrame["surv1yr"] ) ) & 
     ( pd.notnull( dataFrame["stage"] ) ) &
+    ( pd.notnull( dataFrame["age"] ) ) &
     ( pd.isnull( dataFrame["patch_failed"] ) )
     # & ( dataFrame["stage"] == 1.0 ) 
     ]
@@ -123,7 +125,6 @@ def getSlices3d(arr,orient,imgSize):
     # always an odd number of slices around the center slice
     if orient == "A": 
         arr1 = arr[(60-travel):(60+travel+1):skip,0:imgSize,0:imgSize]
-        print [(60-travel),(60+travel+1),skip,0,imgSize,0,imgSize]
         arr2 = arr[(60-travel):(60+travel+1):skip,0:imgSize,30:150]
         arr3 = arr[(60-travel):(60+travel+1):skip,30:150,30:150]
         arr4 = arr[(60-travel):(60+travel+1):skip,30:150,0:imgSize]
@@ -170,7 +171,7 @@ def getSlices3d(arr,orient,imgSize):
             ,arr9.reshape(count*2+1,imgSize,imgSize,1)]
 
 
-def getXandY(dataFrame):
+def getXandY(dataFrame,mode):
 
     imgSize = 120
 
@@ -180,6 +181,7 @@ def getXandY(dataFrame):
     y = []
     zeros = 0
     ones = 0
+    clincical = []
     
     for i in range (dataFrame.shape[0]):
 
@@ -187,9 +189,15 @@ def getXandY(dataFrame):
 
         arr = np.load(npy)
         # X #
-        a.extend (  getSlices2d(arr,'A',imgSize) ) # adds 9 images   ####################################################################################################################
-        s.extend (  getSlices2d(arr,'S',imgSize) ) # adds 9 images   ###################################################################################################################
-        c.extend (  getSlices2d(arr,'C',imgSize) ) # adds 9 images   ###################################################################################################################
+        if mode == "3d":
+            a.extend (  getSlices3d(arr,'A',imgSize) ) # adds 9 images   
+            s.extend (  getSlices3d(arr,'S',imgSize) ) # adds 9 images   
+            c.extend (  getSlices3d(arr,'C',imgSize) ) # adds 9 images   
+        elif mode == "2d" :
+            a.extend (  getSlices2d(arr,'A',imgSize) ) # adds 9 images  
+            s.extend (  getSlices2d(arr,'S',imgSize) ) # adds 9 images   
+            c.extend (  getSlices2d(arr,'C',imgSize) ) # adds 9 images   
+
         # Y #
         y.extend ( [ int(dataFrame.surv2yr[i]) for x in range (9) ] )
         # zeros and ones
@@ -199,15 +207,20 @@ def getXandY(dataFrame):
             zeros = zeros+1
         else:
             raise Exception("a survival value is not 0 or 1")
-            
+
+        # now clinical
+        clincicalVector = [ dataFrame.age[i] , dataFrame.stage[i] , dataFrame.histology_grouped[i] ]
+        clincical.extend( [clincicalVector for x in range(9)] )
+
+
     # after loop
     a = np.array(a, 'float32')
     s = np.array(s, 'float32')
     c = np.array(c, 'float32')
     y = np.array(y, 'int8')
     y = np_utils.to_categorical(y, 2)
-    
-    return a,s,c,y,zeros,ones
+    clincical = np.array(clincical , 'float32'  )
+    return a,s,c,y,zeros,ones,clincical
 
 #
 #
@@ -220,6 +233,11 @@ def getXandY(dataFrame):
 #     .JMML.   MMb..JMMmmmmMMM .JMML. .JMM..AMA.   .AMMA.P"Ybmmd"      .JML. `'  .JMML. `"bmmd"' .JMMmmmdP' .JMMmmmmMMM .JMMmmmmMMM
 #
 #
+def makeClinicalModel():
+    model = Sequential()
+    # just histology, stage and age
+    model.add(Dense( 3, input_dim=(3)) ) # 512
+    return model
 
 def make2dConvModel():
     #(samples, rows, cols, channels) if dim_ordering='tf'.
@@ -254,21 +272,20 @@ def make3dConvModel():
 
     model = Sequential()
 
-    model.add(Convolution3D(32, 5, 5, 5, border_mode='same',dim_ordering='tf' ,input_shape=[5,120,120,1] )) # 32
-    model.add(Activation('relu'))
+    model.add(Convolution3D(32, 5, 5, 5, border_mode='same',dim_ordering='tf' ,input_shape=[5,120,120,1]  , activation='relu')) # 32
 
-    model.add(Convolution3D(32, 5, 5, 5)) # 32
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    model.add(Dropout(0.25))
 
-    model.add(Convolution3D(64, 5, 5, 5, border_mode='same')) # 64
-    model.add(Activation('relu'))
-    model.add(Convolution3D(64, 5, 5, 5)) # 64
-    model.add(Activation('relu'))
+    # model.add(Convolution3D(32, 5, 5, 5, , activation='relu' )) # 32
+    # # model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    # model.add(Dropout(0.25))
 
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    model.add(Dropout(0.25))
+    # model.add(Convolution3D(64, 5, 5, 5, border_mode='same')) # 64
+    # model.add(Activation('relu'))
+    # model.add(Convolution3D(64, 5, 5, 5)) # 64
+    # model.add(Activation('relu'))
+
+    # # model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    # model.add(Dropout(0.25))
 
     model.add(Flatten())
     model.add(Dense(512)) # 512
@@ -368,17 +385,23 @@ class Histories(keras.callbacks.Callback):
 
         dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
         #
-        x_test_a , x_test_s , x_test_c , y_test, zeros , ones = getXandY(dataFrameValidate)
-        print ("test data: " ,x_test_a.shape , x_test_s.shape , x_test_c.shape , y_test.shape )
+        x_validate_a , x_validate_s , x_validate_c , y_validate, zeros , ones , clincial = getXandY(dataFrameValidate, mode)
+        print ("validation data: " ,x_validate_a.shape , x_validate_s.shape , x_validate_c.shape , y_validate.shape, clincial.shape )
 
+        # lets do featurewiseCenterAndStd
+        x_validate_a = featurewiseCenterAndStd(x_validate_a)
+        x_validate_s = featurewiseCenterAndStd(x_validate_s)
+        x_validate_c = featurewiseCenterAndStd(x_validate_c)
 
-        self.y_test = getChuncks(y_test, self.count , self.reduced)
-        self.x_test_a = getChuncks(x_test_a, self.count , self.reduced)   
-        self.x_test_s = getChuncks(x_test_s, self.count , self.reduced)
-        self.x_test_c = getChuncks(x_test_c, self.count , self.reduced)
+        # now lets break them into chuncks divisible by 9 to fit into the GPU
+        self.y_validate = getChuncks(y_validate, self.count , self.reduced)
+        self.x_validate_a = getChuncks(x_validate_a, self.count , self.reduced)   
+        self.x_validate_s = getChuncks(x_validate_s, self.count , self.reduced)
+        self.x_validate_c = getChuncks(x_validate_c, self.count , self.reduced)
+        self.clinical = getChuncks(clincial, self.count , self.reduced)
 
-        print ("part of test data: " , self.x_test_a[0].shape )
-        print ("part of test labels: " , self.y_test[0].shape )
+        print ("part of validate data: " , self.x_validate_a[0].shape )
+        print ("part of validate labels: " , self.y_validate[0].shape )
 
 
     def on_train_end(self, logs={}):
@@ -403,9 +426,9 @@ class Histories(keras.callbacks.Callback):
         #
         for i in range (self.count ):
             # get predictions
-            y_pred = self.model.predict_on_batch ( [ self.x_test_a[i] , self.x_test_s[i] , self.x_test_c[i] ]  )
+            y_pred = self.model.predict_on_batch ( [ self.clinical[i] , self.x_validate_a[i] , self.x_validate_s[i] , self.x_validate_c[i] ]  )
             # group by patient - to get one prediction per patient only
-            labelsOut,logitsOut = aggregate( self.y_test[i] , y_pred )
+            labelsOut,logitsOut = aggregate( self.y_validate[i] , y_pred )
             #
             allLabels.extend(labelsOut)
             allLogits.extend(logitsOut)
@@ -443,17 +466,16 @@ class Histories(keras.callbacks.Callback):
         np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss)
 
 
-        # test loss
+        # validate loss
         #
         for i in range (self.count ):
             # now do loss
-            temp = self.model.test_on_batch ( [ self.x_test_a[i] , self.x_test_s[i] , self.x_test_c[i] ]  , self.y_test[i] )
+            temp = self.model.test_on_batch ( [ self.clinical[i] , self.x_validate_a[i] , self.x_validate_s[i] , self.x_validate_c[i] ]  , self.y_validate[i] )
             validation_loss.append ( temp )
         validation_loss_avg = np.mean(validation_loss)
         self.validation_loss.append(validation_loss_avg)
         np.save( "/home/ubuntu/output/" + RUN + "_validation_loss.npy", self.validation_loss)
          
-        
         return
 
     def on_batch_begin(self, batch, logs={}):
@@ -477,20 +499,24 @@ class Histories(keras.callbacks.Callback):
 # 
 
 
-def createGenerator( A, S, C, Y, batch_size, generator):
+def createGenerator( clincial , A, S, C, Y, batch_size, generator):
 
     while True:
         # suffled indices    
         idx = np.random.permutation( A.shape[0])
         # create image generator
-        batches_A = generator.flow( A[idx], Y[idx], batch_size=batch_size , shuffle=False)
-        batches_S = generator.flow( S[idx], Y[idx], batch_size=batch_size , shuffle=False)
-        batches_C = generator.flow( C[idx], Y[idx], batch_size=batch_size , shuffle=False)
 
-        for batch_a , batch_s , batch_c , counter in zip( 
-            batches_A , batches_S , batches_C , np.arange(batch_size) ):
+        batches_clinical = dummyGenerator.flow( clincial[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
 
-            yield [ batch_a[0], batch_s[0] , batch_c[0] ] , batch_a[1]
+        batches_A = generator.flow( A[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
+        batches_S = generator.flow( S[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
+        batches_C = generator.flow( C[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
+
+        print (batches_A)
+
+        for batch_clinical , batch_a , batch_s , batch_c , counter in zip( batches_clinical , batches_A , batches_S , batches_C , np.arange(batch_size) ):
+
+            yield [ batch_clinical[0] , batch_a[0] , batch_s[0] , batch_c[0] ] , batch_a[1]
 
             if counter >= batch_size:
                 break
