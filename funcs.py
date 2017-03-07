@@ -1,6 +1,7 @@
 
 from __future__ import division
 from __future__ import print_function
+# import script
 import numpy as np
 import pandas as pd
 import os
@@ -13,10 +14,12 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import Convolution2D, MaxPooling2D, Convolution3D , MaxPooling3D
 from sklearn.metrics import roc_auc_score
 import time
+from keras import backend as K
+K.set_image_dim_ordering('tf')
 
 
-RUN = "4"
-mode = "2d"
+
+
 
 #
 #
@@ -31,7 +34,7 @@ mode = "2d"
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3","oncomap", "oncopanel" , "moffitt","moffittSpore" ] 
+    trainList = ["lung1","lung3","oncomap" ]  # , ,"oncopanel" , "moffitt","moffittSpore"
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -67,42 +70,48 @@ def manageDataFrames():
 
 
 def getSlices2d(arr,orient,imgSize):
+    lower = 150-imgSize
+    mid1 = int(lower/2.0)
+    mid2 = 150-int(lower/2.0)
+
     if orient == "A":
         arr1 = arr[60,0:imgSize,0:imgSize]
-        arr2 = arr[60,0:imgSize,30:150]
-        arr3 = arr[60,30:150,30:150]
-        arr4 = arr[60,30:150,0:imgSize]
+        arr2 = arr[60,0:imgSize,lower:150]
+        arr3 = arr[60,lower:150,lower:150]
+        arr4 = arr[60,lower:150,0:imgSize]
         #
-        arr5 = arr[75,15:135,15:135]
+        arr5 = arr[75, mid1:mid2 , mid1:mid2 ]
         #
         arr6 = arr[90,0:imgSize,0:imgSize]
-        arr7 = arr[90,0:imgSize,30:150]
-        arr8 = arr[90,30:150,30:150]
-        arr9 = arr[90,30:150,0:imgSize]
+        arr7 = arr[90,0:imgSize,lower:150]
+        arr8 = arr[90,lower:150,lower:150]
+        arr9 = arr[90,lower:150,0:imgSize]
+
     elif orient == "C":
         arr1 = arr[0:imgSize,60,0:imgSize]
-        arr2 = arr[0:imgSize,60,30:150]
-        arr3 = arr[30:150,60,30:150]
-        arr4 = arr[30:150,60,0:imgSize]
+        arr2 = arr[0:imgSize,60,lower:150]
+        arr3 = arr[lower:150,60,lower:150]
+        arr4 = arr[lower:150,60,0:imgSize]
         #
-        arr5 = arr[15:135,75,15:135]
+        arr5 = arr[mid1:mid2,75,mid1:mid2]
         #
         arr6 = arr[0:imgSize,90,0:imgSize]
-        arr7 = arr[0:imgSize,90,30:150]
-        arr8 = arr[30:150,90,30:150]
-        arr9 = arr[30:150,90,0:imgSize]
+        arr7 = arr[0:imgSize,90,lower:150]
+        arr8 = arr[lower:150,90,lower:150]
+        arr9 = arr[lower:150,90,0:imgSize]
+
     elif orient == "S":
         arr1 = arr[0:imgSize,0:imgSize,60]
-        arr2 = arr[0:imgSize,30:150,60]
-        arr3 = arr[30:150,30:150,60]
-        arr4 = arr[30:150,0:imgSize,60]
+        arr2 = arr[0:imgSize,lower:150,60]
+        arr3 = arr[lower:150,lower:150,60]
+        arr4 = arr[lower:150,0:imgSize,60]
         #
-        arr5 = arr[15:135,15:135,75]
+        arr5 = arr[mid1:mid2,mid1:mid2,75]
         #
         arr6 = arr[0:imgSize,0:imgSize,90]
-        arr7 = arr[0:imgSize,30:150,90]
-        arr8 = arr[30:150,30:150,90]
-        arr9 = arr[30:150,0:imgSize,90]
+        arr7 = arr[0:imgSize,lower:150,90]
+        arr8 = arr[lower:150,lower:150,90]
+        arr9 = arr[lower:150,0:imgSize,90]
         
     return  [arr1.reshape(imgSize,imgSize,1) 
             ,arr2.reshape(imgSize,imgSize,1) 
@@ -114,10 +123,14 @@ def getSlices2d(arr,orient,imgSize):
             ,arr8.reshape(imgSize,imgSize,1) 
             ,arr9.reshape(imgSize,imgSize,1)]
 
-def getSlices3d(arr,orient,imgSize):
+def getSlices3d(arr,orient,imgSize,count):
+    # var
+    lower = 150-imgSize
+    mid1 = int(lower/2.0)
+    mid2 = 150-int(lower/2.0)
+
     # current: 5 slices each 4mm/pixel apart
-    # number of slices in each direction
-    count = 2
+    # count = number of slices in each direction
     # skip how many slices - every other one
     skip = 4
     # travel
@@ -125,40 +138,42 @@ def getSlices3d(arr,orient,imgSize):
     # always an odd number of slices around the center slice
     if orient == "A": 
         arr1 = arr[(60-travel):(60+travel+1):skip,0:imgSize,0:imgSize]
-        arr2 = arr[(60-travel):(60+travel+1):skip,0:imgSize,30:150]
-        arr3 = arr[(60-travel):(60+travel+1):skip,30:150,30:150]
-        arr4 = arr[(60-travel):(60+travel+1):skip,30:150,0:imgSize]
+        arr2 = arr[(60-travel):(60+travel+1):skip,0:imgSize,lower:150]
+        arr3 = arr[(60-travel):(60+travel+1):skip,lower:150,lower:150]
+        arr4 = arr[(60-travel):(60+travel+1):skip,lower:150,0:imgSize]
         #
-        arr5 = arr[(75-travel):(75+travel+1):skip,15:135,15:135]
+        arr5 = arr[(75-travel):(75+travel+1):skip,mid1:mid2,mid1:mid2]
         #
         arr6 = arr[(90-travel):(90+travel+1):skip,0:imgSize,0:imgSize]
-        arr7 = arr[(90-travel):(90+travel+1):skip,0:imgSize,30:150]
-        arr8 = arr[(90-travel):(90+travel+1):skip,30:150,30:150]
-        arr9 = arr[(90-travel):(90+travel+1):skip,30:150,0:imgSize]
+        arr7 = arr[(90-travel):(90+travel+1):skip,0:imgSize,lower:150]
+        arr8 = arr[(90-travel):(90+travel+1):skip,lower:150,lower:150]
+        arr9 = arr[(90-travel):(90+travel+1):skip,lower:150,0:imgSize]
+
     elif orient == "C":
         arr1 = arr[0:imgSize,(60-travel):(60+travel+1):skip,0:imgSize]
-        arr2 = arr[0:imgSize,(60-travel):(60+travel+1):skip,30:150]
-        arr3 = arr[30:150,(60-travel):(60+travel+1):skip,30:150]
-        arr4 = arr[30:150,(60-travel):(60+travel+1):skip,0:imgSize]
+        arr2 = arr[0:imgSize,(60-travel):(60+travel+1):skip,lower:150]
+        arr3 = arr[lower:150,(60-travel):(60+travel+1):skip,lower:150]
+        arr4 = arr[lower:150,(60-travel):(60+travel+1):skip,0:imgSize]
         #
-        arr5 = arr[15:135,(75-travel):(75+travel+1):skip,15:135]
+        arr5 = arr[mid1:mid2,(75-travel):(75+travel+1):skip,mid1:mid2]
         #
         arr6 = arr[0:imgSize,(90-travel):(90+travel+1):skip,0:imgSize]
-        arr7 = arr[0:imgSize,(90-travel):(90+travel+1):skip,30:150]
-        arr8 = arr[30:150,(90-travel):(90+travel+1):skip,30:150]
-        arr9 = arr[30:150,(90-travel):(90+travel+1):skip,0:imgSize]
+        arr7 = arr[0:imgSize,(90-travel):(90+travel+1):skip,lower:150]
+        arr8 = arr[lower:150,(90-travel):(90+travel+1):skip,lower:150]
+        arr9 = arr[lower:150,(90-travel):(90+travel+1):skip,0:imgSize]
+
     elif orient == "S":
         arr1 = arr[0:imgSize,0:imgSize,(60-travel):(60+travel+1):skip]
-        arr2 = arr[0:imgSize,30:150,(60-travel):(60+travel+1):skip]
-        arr3 = arr[30:150,30:150,(60-travel):(60+travel+1):skip]
-        arr4 = arr[30:150,0:imgSize,(60-travel):(60+travel+1):skip]
+        arr2 = arr[0:imgSize,lower:150,(60-travel):(60+travel+1):skip]
+        arr3 = arr[lower:150,lower:150,(60-travel):(60+travel+1):skip]
+        arr4 = arr[lower:150,0:imgSize,(60-travel):(60+travel+1):skip]
         #
-        arr5 = arr[15:135,15:135,(75-travel):(75+travel+1):skip]
+        arr5 = arr[mid1:mid2,mid1:mid2,(75-travel):(75+travel+1):skip]
         #
         arr6 = arr[0:imgSize,0:imgSize,(90-travel):(90+travel+1):skip]
-        arr7 = arr[0:imgSize,30:150,(90-travel):(90+travel+1):skip]
-        arr8 = arr[30:150,30:150,(90-travel):(90+travel+1):skip]
-        arr9 = arr[30:150,0:imgSize,(90-travel):(90+travel+1):skip]
+        arr7 = arr[0:imgSize,lower:150,(90-travel):(90+travel+1):skip]
+        arr8 = arr[lower:150,lower:150,(90-travel):(90+travel+1):skip]
+        arr9 = arr[lower:150,0:imgSize,(90-travel):(90+travel+1):skip]
         
     return  [arr1.reshape(count*2+1,imgSize,imgSize,1) 
             ,arr2.reshape(count*2+1,imgSize,imgSize,1) 
@@ -171,9 +186,12 @@ def getSlices3d(arr,orient,imgSize):
             ,arr9.reshape(count*2+1,imgSize,imgSize,1)]
 
 
-def getXandY(dataFrame,mode):
+def getXandY(dataFrame,mode,imgSize,count, bool):
 
-    imgSize = 120
+    _augmentationFactor = augmentationFactor
+    # if validate or test
+    if (bool):
+        _augmentationFactor = 9
 
     a = []
     s = []
@@ -190,16 +208,16 @@ def getXandY(dataFrame,mode):
         arr = np.load(npy)
         # X #
         if mode == "3d":
-            a.extend (  getSlices3d(arr,'A',imgSize) ) # adds 9 images   
-            s.extend (  getSlices3d(arr,'S',imgSize) ) # adds 9 images   
-            c.extend (  getSlices3d(arr,'C',imgSize) ) # adds 9 images   
+            a.extend (  getSlices3d(arr,'A',imgSize,count) ) # adds 9 images   
+            s.extend (  getSlices3d(arr,'S',imgSize,count) ) # adds 9 images   
+            c.extend (  getSlices3d(arr,'C',imgSize,count) ) # adds 9 images   
         elif mode == "2d" :
             a.extend (  getSlices2d(arr,'A',imgSize) ) # adds 9 images  
             s.extend (  getSlices2d(arr,'S',imgSize) ) # adds 9 images   
             c.extend (  getSlices2d(arr,'C',imgSize) ) # adds 9 images   
 
         # Y #
-        y.extend ( [ int(dataFrame.surv2yr[i]) for x in range (9) ] )
+        y.extend ( [ int(dataFrame.surv2yr[i]) for x in range (_augmentationFactor) ] )
         # zeros and ones
         if int(dataFrame.surv2yr[i]) == 1:
             ones = ones+1
@@ -210,7 +228,7 @@ def getXandY(dataFrame,mode):
 
         # now clinical
         clincicalVector = [ dataFrame.age[i] , dataFrame.stage[i] , dataFrame.histology_grouped[i] ]
-        clincical.extend( [clincicalVector for x in range(9)] )
+        clincical.extend( [clincicalVector for x in range(_augmentationFactor)] )
 
 
     # after loop
@@ -221,6 +239,47 @@ def getXandY(dataFrame,mode):
     y = np_utils.to_categorical(y, 2)
     clincical = np.array(clincical , 'float32'  )
     return a,s,c,y,zeros,ones,clincical
+
+
+# augment
+# flip all direction
+def flipAllThreeDirections(arr,mode):
+    flip_ud = np.fliplr(arr) 
+    flip_io = np.flipud(arr)
+    if mode == "3d": 
+        flip_rl = arr[:,:,::-1]
+        return [flip_ud , flip_io , flip_rl]
+    elif mode == "2d": 
+        return [flip_ud , flip_io]
+    
+# adds original, then adds augmented - changes structure (doesnt append at end)
+def augmentTraining(arr_a,arr_s,arr_c,mode):
+    out_a = []
+    out_s = []
+    out_c = []
+    # loop
+    for k in range (arr_a.shape[0]):
+        # Axial
+        # append original
+        out_a.append( arr_a[k] )
+        # extend augemented
+        out_a.extend(  flipAllThreeDirections(arr_a[k],mode)  )
+        
+        # Sagittal
+        # append original
+        out_s.append( arr_s[k] )
+        # extend augemented
+        out_s.extend(  flipAllThreeDirections(arr_s[k],mode)  )
+        
+        # Coronal
+        # append original
+        out_c.append( arr_c[k] )
+        # extend augemented
+        out_c.extend(  flipAllThreeDirections(arr_c[k],mode)  )
+        
+        
+    return np.array (out_a , 'float32' )  , np.array (out_s , 'float32' )  , np.array (out_c , 'float32' ) 
+
 
 #
 #
@@ -239,12 +298,12 @@ def makeClinicalModel():
     model.add(Dense( 3, input_dim=(3)) ) # 512
     return model
 
-def make2dConvModel():
+def make2dConvModel(imgSize):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
     
     model = Sequential()
 
-    model.add(Convolution2D(48, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[120,120,1] )) # 32
+    model.add(Convolution2D(48, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
     model.add(Activation('relu'))
 
     model.add(Convolution2D(48, 5, 5)) # 32
@@ -267,29 +326,28 @@ def make2dConvModel():
     
     return model
 
-def make3dConvModel():
+
+def make3dConvModel(imgSize,count):
     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
 
     model = Sequential()
 
-    model.add(Convolution3D(32, 5, 5, 5, border_mode='same',dim_ordering='tf' ,input_shape=[5,120,120,1]  , activation='relu')) # 32
+    # input = (samples, count*2+1,imgSize,imgSize,1 )
+    model.add(Convolution3D(32, 5, 5, 5, border_mode='same',dim_ordering='tf' ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
+    # output (samples, count*2+1,imgSize,imgSize, nb_filter)
 
+    model.add( Convolution3D( 32, 5, 5, 5, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+    model.add( MaxPooling3D( pool_size=(2, 2, 2) , dim_ordering='tf'  ) )
+    model.add( Dropout(0.25) )
 
-    # model.add(Convolution3D(32, 5, 5, 5, , activation='relu' )) # 32
-    # # model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    # model.add(Dropout(0.25))
+    model.add(Convolution3D(64, 5, 5, 5,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
 
-    # model.add(Convolution3D(64, 5, 5, 5, border_mode='same')) # 64
-    # model.add(Activation('relu'))
-    # model.add(Convolution3D(64, 5, 5, 5)) # 64
-    # model.add(Activation('relu'))
-
-    # # model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    # model.add(Dropout(0.25))
+    model.add(Convolution3D(64, 5, 5, 5 ,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+    model.add(MaxPooling3D(pool_size=(2, 2, 2) , dim_ordering='tf' ))
+    model.add(Dropout(0.25))
 
     model.add(Flatten())
-    model.add(Dense(512)) # 512
-    model.add(Activation('relu'))
+    model.add( Dense(512 , activation='relu' ) ) # 512
     model.add(Dropout(0.5))
     
     return model
@@ -306,6 +364,29 @@ def make3dConvModel():
 #
 #
 
+# NEW
+# operate on each orientation seperately
+
+def centerAndStandardizeTraining(arr):
+    out = arr
+    #
+    mean = np.mean(out,axis=(0) )
+    std = np.std(out,axis=(0) )
+    # 
+    out -= mean
+    out /= (std + np.finfo(float).eps )
+    #
+    return mean,std,out
+
+def centerAndStandardizeValTest(arr,mean,std):
+    out = arr
+    #
+    out -= mean
+    out /= (std + np.finfo(float).eps )
+    #
+    return out
+
+# OLD
 
 def featurewiseCenterAndStd(arr):
 
@@ -380,18 +461,18 @@ class Histories(keras.callbacks.Callback):
         self.validation_logits = []
         self.train_loss = []
         self.validation_loss = []
-        self.count = 7
-        self.reduced = 135
+        self.count = 21
+        self.reduced = 45
 
         dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
         #
-        x_validate_a , x_validate_s , x_validate_c , y_validate, zeros , ones , clincial = getXandY(dataFrameValidate, mode)
+        x_validate_a , x_validate_s , x_validate_c , y_validate, zeros , ones , clincial = getXandY(dataFrameValidate, mode, imgSize, count, True)
         print ("validation data: " ,x_validate_a.shape , x_validate_s.shape , x_validate_c.shape , y_validate.shape, clincial.shape )
 
         # lets do featurewiseCenterAndStd
-        x_validate_a = featurewiseCenterAndStd(x_validate_a)
-        x_validate_s = featurewiseCenterAndStd(x_validate_s)
-        x_validate_c = featurewiseCenterAndStd(x_validate_c)
+        x_validate_a = centerAndStandardizeValTest(x_validate_a,mean_a,std_a)
+        x_validate_s = centerAndStandardizeValTest(x_validate_s,mean_s,std_s)
+        x_validate_c = centerAndStandardizeValTest(x_validate_c,mean_c,std_c)     
 
         # now lets break them into chuncks divisible by 9 to fit into the GPU
         self.y_validate = getChuncks(y_validate, self.count , self.reduced)
