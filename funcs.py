@@ -1,7 +1,7 @@
 
 from __future__ import division
 from __future__ import print_function
-# import script
+import krs
 import numpy as np
 import pandas as pd
 import os
@@ -34,7 +34,7 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3","oncomap" ]  # , ,"oncopanel" , "moffitt","moffittSpore"
+    trainList = ["lung1","lung3"]  # , , ,"oncomap" ,"oncopanel" , "moffitt","moffittSpore"
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -86,6 +86,8 @@ def getSlices2d(arr,orient,imgSize):
         arr7 = arr[90,0:imgSize,lower:150]
         arr8 = arr[90,lower:150,lower:150]
         arr9 = arr[90,lower:150,0:imgSize]
+        
+        return  [arr5.reshape(imgSize,imgSize,1)]
 
     elif orient == "C":
         arr1 = arr[0:imgSize,60,0:imgSize]
@@ -99,6 +101,8 @@ def getSlices2d(arr,orient,imgSize):
         arr7 = arr[0:imgSize,90,lower:150]
         arr8 = arr[lower:150,90,lower:150]
         arr9 = arr[lower:150,90,0:imgSize]
+        
+        return  [ np.flipud (arr5).reshape(imgSize,imgSize,1)  ] # np.swapaxes( ,0,1)
 
     elif orient == "S":
         arr1 = arr[0:imgSize,0:imgSize,60]
@@ -113,15 +117,17 @@ def getSlices2d(arr,orient,imgSize):
         arr8 = arr[lower:150,lower:150,90]
         arr9 = arr[lower:150,0:imgSize,90]
         
-    return  [arr1.reshape(imgSize,imgSize,1) 
-            ,arr2.reshape(imgSize,imgSize,1) 
-            ,arr3.reshape(imgSize,imgSize,1) 
-            ,arr4.reshape(imgSize,imgSize,1) 
-            ,arr5.reshape(imgSize,imgSize,1)
-            ,arr6.reshape(imgSize,imgSize,1) 
-            ,arr7.reshape(imgSize,imgSize,1) 
-            ,arr8.reshape(imgSize,imgSize,1) 
-            ,arr9.reshape(imgSize,imgSize,1)]
+        return [np.flipud (arr5).reshape(imgSize,imgSize,1) ]#  np.swapaxes( np.rot90(arr5,3) , 0,2).reshape(imgSize,imgSize,1)
+        
+#     return  [arr1.reshape(imgSize,imgSize,1) 
+#             ,arr2.reshape(imgSize,imgSize,1) 
+#             ,arr3.reshape(imgSize,imgSize,1) 
+#             ,arr4.reshape(imgSize,imgSize,1) 
+#             ,arr5.reshape(imgSize,imgSize,1)
+#             ,arr6.reshape(imgSize,imgSize,1) 
+#             ,arr7.reshape(imgSize,imgSize,1) 
+#             ,arr8.reshape(imgSize,imgSize,1) 
+#             ,arr9.reshape(imgSize,imgSize,1)]
 
 def getSlices3d(arr,orient,imgSize,count):
     # var
@@ -148,6 +154,8 @@ def getSlices3d(arr,orient,imgSize,count):
         arr7 = arr[(90-travel):(90+travel+1):skip,0:imgSize,lower:150]
         arr8 = arr[(90-travel):(90+travel+1):skip,lower:150,lower:150]
         arr9 = arr[(90-travel):(90+travel+1):skip,lower:150,0:imgSize]
+        
+        return  [arr5.reshape(count*2+1,imgSize,imgSize,1)]
 
     elif orient == "C":
         arr1 = arr[0:imgSize,(60-travel):(60+travel+1):skip,0:imgSize]
@@ -161,6 +169,8 @@ def getSlices3d(arr,orient,imgSize,count):
         arr7 = arr[0:imgSize,(90-travel):(90+travel+1):skip,lower:150]
         arr8 = arr[lower:150,(90-travel):(90+travel+1):skip,lower:150]
         arr9 = arr[lower:150,(90-travel):(90+travel+1):skip,0:imgSize]
+        
+        return [  np.swapaxes(np.flipud (arr5) ,0,1).reshape(count*2+1,imgSize,imgSize,1) ]
 
     elif orient == "S":
         arr1 = arr[0:imgSize,0:imgSize,(60-travel):(60+travel+1):skip]
@@ -174,24 +184,27 @@ def getSlices3d(arr,orient,imgSize,count):
         arr7 = arr[0:imgSize,lower:150,(90-travel):(90+travel+1):skip]
         arr8 = arr[lower:150,lower:150,(90-travel):(90+travel+1):skip]
         arr9 = arr[lower:150,0:imgSize,(90-travel):(90+travel+1):skip]
-        
-    return  [arr1.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr2.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr3.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr4.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr5.reshape(count*2+1,imgSize,imgSize,1)
-            ,arr6.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr7.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr8.reshape(count*2+1,imgSize,imgSize,1) 
-            ,arr9.reshape(count*2+1,imgSize,imgSize,1)]
+
+        return [np.swapaxes( np.rot90(arr5,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)]
+
+    # return  [arr1.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr2.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr3.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr4.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr5.reshape(count*2+1,imgSize,imgSize,1)
+    #         ,arr6.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr7.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr8.reshape(count*2+1,imgSize,imgSize,1) 
+    #         ,arr9.reshape(count*2+1,imgSize,imgSize,1)]
 
 
 def getXandY(dataFrame,mode,imgSize,count, bool):
 
     _augmentationFactor = augmentationFactor
+    # if train, do nothing
     # if validate or test
     if (bool):
-        _augmentationFactor = 9
+        _augmentationFactor = 1
 
     a = []
     s = []
@@ -257,25 +270,34 @@ def augmentTraining(arr_a,arr_s,arr_c,mode):
     out_a = []
     out_s = []
     out_c = []
+
+
     # loop
     for k in range (arr_a.shape[0]):
+
         # Axial
-        # append original
+        # append original - 1
         out_a.append( arr_a[k] )
-        # extend augemented
+        # extend flipped - 3
         out_a.extend(  flipAllThreeDirections(arr_a[k],mode)  )
+        # extend rotated -2
+        out_a.extend(  krs.applyRotationToDepth(arr_a[k])   )
         
         # Sagittal
-        # append original
+        # append original - 1
         out_s.append( arr_s[k] )
-        # extend augemented
+        # extend flipped - 3
         out_s.extend(  flipAllThreeDirections(arr_s[k],mode)  )
-        
+        # extend rotated -2
+        out_s.extend(  krs.applyRotationToDepth(arr_s[k])   )
+
         # Coronal
-        # append original
+        # append original - 1
         out_c.append( arr_c[k] )
-        # extend augemented
+        # extend flipped - 3
         out_c.extend(  flipAllThreeDirections(arr_c[k],mode)  )
+        # extend rotated -2
+        out_c.extend(  krs.applyRotationToDepth(arr_c[k])   )
         
         
     return np.array (out_a , 'float32' )  , np.array (out_s , 'float32' )  , np.array (out_c , 'float32' ) 
@@ -327,30 +349,68 @@ def make2dConvModel(imgSize):
     return model
 
 
+# def make3dConvModel(imgSize,count):
+#     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
+
+#     model = Sequential()
+
+#     conv_filt = 3
+
+#     # input = (samples, count*2+1,imgSize,imgSize,1 )
+#     model.add(Convolution3D(32, conv_filt, conv_filt, conv_filt, border_mode='same',dim_ordering='tf' 
+#     ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
+#     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
+
+#     model.add( Convolution3D( 32, conv_filt, conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+#     model.add( MaxPooling3D( pool_size=(2, 2, 2) , dim_ordering='tf'  ) )
+#     model.add( Dropout(0.5) )
+
+#     model.add(Convolution3D(64, conv_filt, conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+
+#     model.add(Convolution3D(64, conv_filt, conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+#     model.add(MaxPooling3D(pool_size=(2, 2, 2) , dim_ordering='tf' ))
+#     model.add(Dropout(0.5))
+
+#     model.add(Flatten())
+#     model.add( Dense(512 , activation='relu' ) ) # 512
+#     model.add(Dropout(0.5))
+    
+#     return model
+
+
 def make3dConvModel(imgSize,count):
     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
 
     model = Sequential()
 
+    conv_filt = 3
+    conv_filt_depth = 2
+    #
+    pool_filt = 2
+    pool_filt_depth = 2
+
     # input = (samples, count*2+1,imgSize,imgSize,1 )
-    model.add(Convolution3D(32, 5, 5, 5, border_mode='same',dim_ordering='tf' ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
+    model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
 
-    model.add( Convolution3D( 32, 5, 5, 5, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
-    model.add( MaxPooling3D( pool_size=(2, 2, 2) , dim_ordering='tf'  ) )
-    model.add( Dropout(0.25) )
+    model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+    model.add( MaxPooling3D( pool_size=(pool_filt_depth, pool_filt, pool_filt) , dim_ordering='tf'  ) )
+    model.add( Dropout(0.5) )
 
-    model.add(Convolution3D(64, 5, 5, 5,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
 
-    model.add(Convolution3D(64, 5, 5, 5 ,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
-    model.add(MaxPooling3D(pool_size=(2, 2, 2) , dim_ordering='tf' ))
-    model.add(Dropout(0.25))
+    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+    model.add(MaxPooling3D(pool_size=(pool_filt_depth, pool_filt, pool_filt) , dim_ordering='tf' ))
+    model.add(Dropout(0.5))
+    
+    # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
 
     model.add(Flatten())
     model.add( Dense(512 , activation='relu' ) ) # 512
     model.add(Dropout(0.5))
     
     return model
+
 
 #
 #
@@ -406,7 +466,7 @@ def featurewiseCenterAndStd(arr):
 
 # used for evaluating performance 
 def aggregate(testLabels,logits):
-    mul = 9 # every 9
+    mul = 1 # every 9
     labelsOut = []
     logitsOut = []
     # 
@@ -459,9 +519,10 @@ class Histories(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
         self.auc = []
         self.validation_logits = []
+        self.validation_logits_raw = []
         self.train_loss = []
         self.validation_loss = []
-        self.count = 21
+        self.count = 3 #21
         self.reduced = 45
 
         dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
@@ -498,16 +559,20 @@ class Histories(keras.callbacks.Callback):
         return
 
     def on_epoch_end(self, epoch, logs={}):
+
         #
         # PREDICT
         #
         allLabels = []
         allLogits = []
         validation_loss = []
+        rawLogits = []
         #
         for i in range (self.count ):
             # get predictions
             y_pred = self.model.predict_on_batch ( [ self.clinical[i] , self.x_validate_a[i] , self.x_validate_s[i] , self.x_validate_c[i] ]  )
+            # save raw logits
+            rawLogits.extend( y_pred  ) 
             # group by patient - to get one prediction per patient only
             labelsOut,logitsOut = aggregate( self.y_validate[i] , y_pred )
             #
@@ -515,8 +580,13 @@ class Histories(keras.callbacks.Callback):
             allLogits.extend(logitsOut)
             #
 
+        self.validation_logits_raw.append( rawLogits )
+        np.save( "/home/ubuntu/output/" + RUN + "_validation_logits_raw.npy", self.validation_logits_raw)
+
+
         allLabels = np.array(allLabels)
         allLogits = np.array(allLogits)
+
         # 
         print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape )
 
@@ -579,25 +649,23 @@ class Histories(keras.callbacks.Callback):
 #
 # 
 
+# this runs every epoch
 
-def createGenerator( clincial , A, S, C, Y, batch_size, generator):
+def createGenerator( clinical, A, S, C, Y, batch_size, generator):
 
     while True:
         # suffled indices    
         idx = np.random.permutation( A.shape[0])
         # create image generator
 
-        batches_clinical = dummyGenerator.flow( clincial[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
-
         batches_A = generator.flow( A[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
-        batches_S = generator.flow( S[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
-        batches_C = generator.flow( C[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
+        batches_S = generator.flow( S[idx], clinical[idx], batch_size=batch_size , shuffle=False, seed = 1) # Y is not needed here - switch to clinical
+        batches_C = generator.flow( C[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1) # Y is not needed here ..
 
-        print (batches_A)
 
-        for batch_clinical , batch_a , batch_s , batch_c , counter in zip( batches_clinical , batches_A , batches_S , batches_C , np.arange(batch_size) ):
+        for  batch_a , batch_s , batch_c , counter in zip( batches_A , batches_S , batches_C , np.arange(batch_size) ):
 
-            yield [ batch_clinical[0] , batch_a[0] , batch_s[0] , batch_c[0] ] , batch_a[1]
+            yield [batch_s[1] , batch_a[0] , batch_s[0] , batch_c[0] ] , batch_a[1]
 
             if counter >= batch_size:
                 break
