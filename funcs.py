@@ -34,7 +34,7 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung1","oncopanel" , "moffitt","moffittSpore" ,"oncomap" ,"lung3"]  # , , , ,
+    trainList = ["lung1","lung3"]  # , , , , "oncopanel" , "moffitt","moffittSpore" ,"oncomap" ,
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -183,13 +183,13 @@ def make3dConvModel(imgSize,count):
     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
 
     model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
-    model.add( MaxPooling3D( pool_size=(pool_filt_depth, pool_filt, pool_filt) , dim_ordering='tf'  ) )
+    model.add( MaxPooling3D( pool_size=(3, pool_filt, pool_filt) , dim_ordering='tf'  ) )
     model.add( Dropout(0.5) )
 
     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
 
     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
-    model.add(MaxPooling3D(pool_size=(pool_filt_depth, pool_filt, pool_filt) , dim_ordering='tf' ))
+    model.add(MaxPooling3D(pool_size=(2, pool_filt, pool_filt) , dim_ordering='tf' ))
     model.add(Dropout(0.5))
     
     # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
