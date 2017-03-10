@@ -21,7 +21,7 @@ batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 1000
 lr = 0.000001 # 0.000001
-count = 3 # for 3d mode, no i=og images to take in every direction
+count = 5 # for 3d mode, no i=og images to take in every direction
 finalSize = 110
 imgSize = 64 # 108
 valTestMultiplier = 1

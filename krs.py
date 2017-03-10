@@ -140,7 +140,9 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
             miniPatch =  miniPatch[:,:,::-1]
 
         # rotation
-        theta = np.pi / 180 * np.random.uniform(-180, 180)
+        angleList = [-180,-90,0,90,180]
+        randAng = angleList [ random.randint(0,4) ]
+        theta = np.pi / 180 * randAng #   np.random.uniform(-180, 180)
         #
         miniPatch = applyRotation(miniPatch,theta) 
 
