@@ -3,140 +3,53 @@ from __future__ import division
 
 import numpy as np
 import scipy.ndimage as ndi
+import random 
+from keras.utils import np_utils
 
-def random_rotation(x, theta=90, row_axis=1, col_axis=2, channel_axis=0,
-                    fill_mode='nearest', cval=0.):
-    """Performs a random rotation of a Numpy image tensor.
-    # Arguments
-        x: Input tensor. Must be 3D.
-        rg: Rotation range, in degrees.
-        row_axis: Index of axis for rows in the input tensor.
-        col_axis: Index of axis for columns in the input tensor.
-        channel_axis: Index of axis for channels in the input tensor.
-        fill_mode: Points outside the boundaries of the input
-            are filled according to the given mode
-            (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
-        cval: Value used for points outside the boundaries
-            of the input if `mode='constant'`.
-    # Returns
-        Rotated Numpy image tensor.
-    """
-    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
-                                [np.sin(theta), np.cos(theta), 0],
-                                [0, 0, 1]])
+#
+#
+#           db   `7MMF'   `7MF' .g8"""bgd `7MMM.     ,MMF'`7MM"""YMM  `7MN.   `7MF'MMP""MM""YMM
+#          ;MM:    MM       M .dP'     `M   MMMb    dPMM    MM    `7    MMN.    M  P'   MM   `7
+#         ,V^MM.   MM       M dM'       `   M YM   ,M MM    MM   d      M YMb   M       MM
+#        ,M  `MM   MM       M MM            M  Mb  M' MM    MMmmMM      M  `MN. M       MM
+#        AbmmmqMA  MM       M MM.    `7MMF' M  YM.P'  MM    MM   Y  ,   M   `MM.M       MM
+#       A'     VML YM.     ,M `Mb.     MM   M  `YM'   MM    MM     ,M   M     YMM       MM
+#     .AMA.   .AMMA.`bmmmmd"'   `"bmmmdPY .JML. `'  .JMML..JMMmmmmMMM .JML.    YM     .JMML.
+#
+#
 
-    h, w = x.shape[row_axis], x.shape[col_axis]
-    transform_matrix = transform_matrix_offset_center(rotation_matrix, h, w)
-    x = apply_transform(x, transform_matrix, channel_axis, fill_mode, cval)
-    return x
+def offsetPatch(arr, finalSize):
+    offset = int( (150-finalSize) / 2.0 )
+    offsetEnd = int ( 150-offset )
+    return arr[ offset:offsetEnd , offset:offsetEnd , offset:offsetEnd ]
+    
 
-
-def random_shift(x, wrg, hrg, row_axis=1, col_axis=2, channel_axis=0,
-                 fill_mode='nearest', cval=0.):
-    """Performs a random spatial shift of a Numpy image tensor.
-    # Arguments
-        x: Input tensor. Must be 3D.
-        wrg: Width shift range, as a float fraction of the width.
-        hrg: Height shift range, as a float fraction of the height.
-        row_axis: Index of axis for rows in the input tensor.
-        col_axis: Index of axis for columns in the input tensor.
-        channel_axis: Index of axis for channels in the input tensor.
-        fill_mode: Points outside the boundaries of the input
-            are filled according to the given mode
-            (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
-        cval: Value used for points outside the boundaries
-            of the input if `mode='constant'`.
-    # Returns
-        Shifted Numpy image tensor.
-    """
-    h, w = x.shape[row_axis], x.shape[col_axis]
-    tx = np.random.uniform(-hrg, hrg) * h
-    ty = np.random.uniform(-wrg, wrg) * w
-    translation_matrix = np.array([[1, 0, tx],
-                                   [0, 1, ty],
-                                   [0, 0, 1]])
-
-    transform_matrix = translation_matrix  # no need to do offset
-    x = apply_transform(x, transform_matrix, channel_axis, fill_mode, cval)
-    return x
-
-
-def random_shear(x, intensity, row_axis=1, col_axis=2, channel_axis=0,
-                 fill_mode='nearest', cval=0.):
-    """Performs a random spatial shear of a Numpy image tensor.
-    # Arguments
-        x: Input tensor. Must be 3D.
-        intensity: Transformation intensity.
-        row_axis: Index of axis for rows in the input tensor.
-        col_axis: Index of axis for columns in the input tensor.
-        channel_axis: Index of axis for channels in the input tensor.
-        fill_mode: Points outside the boundaries of the input
-            are filled according to the given mode
-            (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
-        cval: Value used for points outside the boundaries
-            of the input if `mode='constant'`.
-    # Returns
-        Sheared Numpy image tensor.
-    """
-    shear = np.random.uniform(-intensity, intensity)
-    shear_matrix = np.array([[1, -np.sin(shear), 0],
-                             [0, np.cos(shear), 0],
-                             [0, 0, 1]])
-
-    h, w = x.shape[row_axis], x.shape[col_axis]
-    transform_matrix = transform_matrix_offset_center(shear_matrix, h, w)
-    x = apply_transform(x, transform_matrix, channel_axis, fill_mode, cval)
-    return x
-
-
-def random_zoom(x, zoom_range, row_axis=1, col_axis=2, channel_axis=0,
-                fill_mode='nearest', cval=0.):
-    """Performs a random spatial zoom of a Numpy image tensor.
-    # Arguments
-        x: Input tensor. Must be 3D.
-        zoom_range: Tuple of floats; zoom range for width and height.
-        row_axis: Index of axis for rows in the input tensor.
-        col_axis: Index of axis for columns in the input tensor.
-        channel_axis: Index of axis for channels in the input tensor.
-        fill_mode: Points outside the boundaries of the input
-            are filled according to the given mode
-            (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
-        cval: Value used for points outside the boundaries
-            of the input if `mode='constant'`.
-    # Returns
-        Zoomed Numpy image tensor.
-    # Raises
-        ValueError: if `zoom_range` isn't a tuple.
-    """
-    if len(zoom_range) != 2:
-        raise ValueError('zoom_range should be a tuple or list of two floats. '
-                         'Received arg: ', zoom_range)
-
-    if zoom_range[0] == 1 and zoom_range[1] == 1:
-        zx, zy = 1, 1
-    else:
-        zx, zy = np.random.uniform(zoom_range[0], zoom_range[1], 2)
-    zoom_matrix = np.array([[zx, 0, 0],
-                            [0, zy, 0],
-                            [0, 0, 1]])
-
-    h, w = x.shape[row_axis], x.shape[col_axis]
-    transform_matrix = transform_matrix_offset_center(zoom_matrix, h, w)
-    x = apply_transform(x, transform_matrix, channel_axis, fill_mode, cval)
-    return x
-
-
-def random_channel_shift(x, intensity, channel_axis=0):
-    x = np.rollaxis(x, channel_axis, 0)
-    min_x, max_x = np.min(x), np.max(x)
-    channel_images = [np.clip(x_channel + np.random.uniform(-intensity, intensity), min_x, max_x)
-                      for x_channel in x]
-    x = np.stack(channel_images, axis=0)
-    x = np.rollaxis(x, 0, channel_axis + 1)
-    return x
-
-
-
+def getMiniPatch(rand,arr,imgSize):
+    lower = arr.shape[0] - imgSize
+    maxi = arr.shape[0]
+    mid1 = int(lower/2.0)
+    mid2 = maxi-int(lower/2.0)
+    
+    if rand == 0:
+        return arr[0:imgSize,0:imgSize,0:imgSize]
+    elif rand == 1:
+        return arr[0:imgSize,0:imgSize,lower:maxi]
+    elif rand == 2:
+        return arr[0:imgSize,lower:maxi,lower:maxi]  
+    elif rand == 3:
+        return arr[0:imgSize,lower:maxi,0:imgSize]  
+    #
+    elif rand == 4:
+        return arr[mid1:mid2,mid1:mid2,mid1:mid2] 
+    #
+    elif rand == 5:
+        return arr[lower:maxi,0:imgSize,0:imgSize]
+    elif rand == 6:
+        return arr[lower:maxi,0:imgSize,lower:maxi]
+    elif rand == 7:
+        return arr[lower:maxi,lower:maxi,lower:maxi]  
+    elif rand == 8:
+        return arr[lower:maxi,lower:maxi,0:imgSize]  
 
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 + 0.5
@@ -157,33 +70,191 @@ def apply_transform(x, transform_matrix, channel_axis=0, fill_mode='nearest', cv
     x = np.rollaxis(x, 0, channel_axis + 1)
     return x
 
-    
+def random_rotation(x, theta=90, row_axis=1, col_axis=2, channel_axis=0,
+                    fill_mode='nearest', cval=0.):
+    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
+                                [np.sin(theta), np.cos(theta), 0],
+                                [0, 0, 1]])
 
-#
-#
-#     `7MMM.     ,MMF'`7MMF'`7MN.   `7MF'`7MM"""YMM
-#       MMMb    dPMM    MM    MMN.    M    MM    `7
-#       M YM   ,M MM    MM    M YMb   M    MM   d
-#       M  Mb  M' MM    MM    M  `MN. M    MMmmMM
-#       M  YM.P'  MM    MM    M   `MM.M    MM   Y  ,
-#       M  `YM'   MM    MM    M     YMM    MM     ,M
-#     .JML. `'  .JMML..JMML..JML.    YM  .JMMmmmmMMM
-#
-#
+    h, w = x.shape[row_axis], x.shape[col_axis]
+    transform_matrix = transform_matrix_offset_center(rotation_matrix, h, w)
+    x = apply_transform(x, transform_matrix, channel_axis, fill_mode, cval)
+    return x
 
-def applyRotationToDepth(arr):
+def applyRotation(arr,theta):
     #
-    out_clockwise = np.copy(arr)
-    out_anticlockwise = np.copy(arr)
-    #
-    # define rotations thetas in radians
-    theta_clockwise = np.pi / 180 * (90)
-    theta_anticlockwise = np.pi / 180 * (-90)
+    out = np.copy(arr)
     #
     for i in range (arr.shape[0]):
+        out[i] = random_rotation(out[i],theta = theta, 
+                                 row_axis=0, col_axis=1, channel_axis=2, fill_mode='reflect', cval=0. )
+    return  out
+
+
+
+
+#
+#
+#     MMP""MM""YMM `7MM"""Mq.        db      `7MMF'`7MN.   `7MF'
+#     P'   MM   `7   MM   `MM.      ;MM:       MM    MMN.    M
+#          MM        MM   ,M9      ,V^MM.      MM    M YMb   M
+#          MM        MMmmdM9      ,M  `MM      MM    M  `MN. M
+#          MM        MM  YM.      AbmmmqMA     MM    M   `MM.M
+#          MM        MM   `Mb.   A'     VML    MM    M     YMM
+#        .JMML.    .JMML. .JMM..AMA.   .AMMA..JMML..JML.    YM
+#
+#
+
+# augments, randmoizes and splits into batches.
+def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count, batchSize):
+    
+
+    arr_a_list = []
+    arr_s_list = []
+    arr_c_list = []
+
+    # loop through each patient.
+    for arr in iter(x_train):
+
+        # offset array to get a smaller one
+        offsetArr = offsetPatch(arr, finalSize)
+
+        # get miniPatch (0~9)
+        randInt = random.randint(0,8)
+        miniPatch = getMiniPatch(randInt,offsetArr,imgSize)
+
+        # reshape to make channel
+        miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+
+        # flip bools
+        flipBoolud = bool(random.getrandbits(1))
+        flipBoolio = bool(random.getrandbits(1))
+        flipBoolrl = bool(random.getrandbits(1))
+
         #
-        out_clockwise[i] = random_rotation(out_clockwise[i],theta = theta_clockwise, row_axis=0, col_axis=1, channel_axis=2, fill_mode='reflect', cval=0. )
-        # 
-        out_anticlockwise[i] = random_rotation(out_anticlockwise[i],theta = theta_anticlockwise, row_axis=0, col_axis=1, channel_axis=2, fill_mode='reflect', cval=0. )
+        if flipBoolud:
+            miniPatch =  np.fliplr(miniPatch)    
+        if flipBoolio:
+            miniPatch =  np.flipud(miniPatch) 
+        if flipBoolrl:
+            miniPatch =  miniPatch[:,:,::-1]
+
+        # rotation
+        theta = np.pi / 180 * np.random.uniform(-180, 180)
+        #
+        miniPatch = applyRotation(miniPatch,theta) 
+
+        # OTHER AUGMENTATIONS COME HERE
+
+        # EXTRACT ORIENTATION SLICES
+        skip = 4 # in mm or pixel
+        travel = int(count * skip)
+        mid  = int(imgSize/2.0)
+        #
+        arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+        #
+        arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+        arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+        #
+        arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+        arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
         
-    return [ out_clockwise , out_anticlockwise ]
+    # AFTER LOOP
+    # RANDOMIZE
+    idx = np.random.permutation( len(x_train))
+    # all is 5, batch size is 2, batch proper is 4, no of batches is 2
+    batchProper = len(x_train) - (len(x_train)%batchSize) 
+    noOfBatches = batchProper / batchSize
+    # reorder all and take first batch*int entries i.e. leave remainder out, then split
+    a_train = np.split  (   np.array( arr_a_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+    s_train = np.split  (   np.array( arr_s_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+    c_train = np.split  (   np.array( arr_c_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+
+    # print (  y_train.shape ) 
+
+    y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
+    clinical_train_out = np.split  (   clinical_train         [idx] [:batchProper]   , noOfBatches )  
+
+
+    return a_train,s_train,c_train,y_train_out,clinical_train_out
+
+# runs every epoch
+def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize):
+
+
+    while True:
+        
+        # these are acually lists of batches
+        a_train,s_train,c_train,y_train_out,clinical_train_out = augmentAndSplitTrain(x_train,y_train,clinical_train,
+                                                                 finalSize,imgSize,count,batchSize)
+
+        # print ("final train batch data:" , a_train[0].shape,s_train[0].shape,c_train[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
+        
+        batches = 0
+        for   _a_train,_s_train,_c_train,_y_train,_clinical_train in zip( 
+            a_train,s_train,c_train,y_train_out,clinical_train_out ):
+
+            yield [_clinical_train , _a_train , _s_train , _c_train ] , _y_train   
+
+            batches += 1
+            if batches ==  len(a_train) :
+                break
+
+
+
+#
+#                                             AW
+#     `7MMF'   `7MF' db      `7MMF'          ,M'MMP""MM""YMM `7MM"""YMM   .M"""bgd MMP""MM""YMM
+#       `MA     ,V  ;MM:       MM            MV P'   MM   `7   MM    `7  ,MI    "Y P'   MM   `7
+#        VM:   ,V  ,V^MM.      MM           AW       MM        MM   d    `MMb.          MM
+#         MM.  M' ,M  `MM      MM          ,M'       MM        MMmmMM      `YMMNq.      MM
+#         `MM A'  AbmmmqMA     MM      ,   MV        MM        MM   Y  , .     `MM      MM
+#          :MM;  A'     VML    MM     ,M  AW         MM        MM     ,M Mb     dM      MM
+#           VF .AMA.   .AMMA..JMMmmmmMMM ,M'       .JMML.    .JMMmmmmMMM P"Ybmmd"     .JMML.
+#                                        MV
+#                                       AW
+
+
+
+def splitValTest(x_valTest,finalSize,imgSize,count):
+
+    arr_a_list = []
+    arr_s_list = []
+    arr_c_list = []
+
+    # loop through each patient.
+    for arr in iter(x_valTest):
+
+        # offset array to get a smaller one
+        offsetArr = offsetPatch(arr, finalSize)
+
+        # get miniPatch (0~9)
+        # randInt = random.randint(0,9)
+        miniPatch = getMiniPatch(4,offsetArr,imgSize)
+
+        # reshape to make channel
+        miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+
+
+        # EXTRACT ORIENTATION SLICES
+        skip = 4 # in mm or pixel
+        travel = int(count * skip)
+        mid  = int(imgSize/2.0)
+        #
+        arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+        #
+        arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+        arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+        #
+        arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+        arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+
+
+        
+    arr_a_list = np.array( arr_a_list ) 
+    arr_s_list = np.array( arr_s_list )
+    arr_c_list = np.array( arr_c_list )  
+        
+    
+        
+    return arr_a_list,arr_s_list,arr_c_list
