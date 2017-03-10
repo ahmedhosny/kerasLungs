@@ -206,24 +206,23 @@ def makeSingle3dConvModel(imgSize,skip):
 
     conv_filt = 3
     conv_filt_depth = 2
-    init = "he_normal"
     #
 
     # input = (samples, count*2+1,imgSize,imgSize,1 )
-    model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, init = init , border_mode='same',dim_ordering='tf' ,input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1]  , activation='relu')) # 32
+    model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1]  , activation='relu')) # 32
     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
 
-    model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt,init = init , border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+    model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
     model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
     model.add( Dropout(0.5) )
 
-    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt, init = init , border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
 
-    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt, init = init , border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
     model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
     model.add(Dropout(0.5))
     
-    model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
+    # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
 
     model.add(Flatten())
     model.add( Dense(512 , activation='relu' ) ) # 512

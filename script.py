@@ -20,15 +20,15 @@ mode = "3d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 1000
-lr = 0.000001 # 0.000001
+lr = 0.00001 # 0.000001
 count = 5 # for 3d mode, no i=og images to take in every direction
-finalSize = 120 # from 150 down to..
-imgSize = 100 # 108
+finalSize = 150 # from 150 down to..
+imgSize = 120 # 108
 valTestMultiplier = 1
 
 # for single3d
 fork = False
-skip = 2 # (imgSize/skip should be int)
+skip = 3 # (imgSize/skip should be int)
 
 #
 #
@@ -89,8 +89,8 @@ with tf.device('/gpu:0'):
         model.add(keras.engine.topology.Merge([  model_0 , singleModel ], mode='concat', concat_axis=1)) # 512*3 + 3
 
 
-    model.add(Dense(512, init = "he_normal" ))
-    model.add(Dense(nb_classes, init = "he_normal" ))
+    model.add(Dense(512))
+    model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
 
     # myOptimizer = keras.optimizers.SGD(lr=lr, momentum=0.0, decay=0.0, nesterov=False)
@@ -126,7 +126,7 @@ with tf.device('/gpu:0'):
 
         model.fit_generator( krs.myGenerator_single3D(x_train_cs,y_train,clinical_train,finalSize,imgSize,batch_size, skip) ,
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                    # class_weight={0 : zeroWeight, 1: oneWeight},
+                    class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
 
