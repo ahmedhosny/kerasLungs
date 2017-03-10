@@ -260,3 +260,134 @@ def splitValTest(x_valTest,finalSize,imgSize,count):
     
         
     return arr_a_list,arr_s_list,arr_c_list
+
+
+    #################################################################################################################################################
+
+
+#
+#
+#      .M"""bgd `7MMF'`7MN.   `7MF' .g8"""bgd `7MMF'      `7MM"""YMM               `7MM"""Yb.
+#     ,MI    "Y   MM    MMN.    M .dP'     `M   MM          MM    `7                 MM    `Yb.
+#     `MMb.       MM    M YMb   M dM'       `   MM          MM   d         pd""b.    MM     `Mb
+#       `YMMNq.   MM    M  `MN. M MM            MM          MMmmMM        (O)  `8b   MM      MM
+#     .     `MM   MM    M   `MM.M MM.    `7MMF' MM      ,   MM   Y  ,          ,89   MM     ,MP
+#     Mb     dM   MM    M     YMM `Mb.     MM   MM     ,M   MM     ,M        ""Yb.   MM    ,dP'
+#     P"Ybmmd"  .JMML..JML.    YM   `"bmmmdPY .JMMmmmmMMM .JMMmmmmMMM           88 .JMMmmmdP'
+#                                                                         (O)  .M'
+#                                                                          bmmmd'
+
+# augments, randmoizes and splits into batches.
+def augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,finalSize,imgSize, batchSize, skip):
+    
+
+    arr_list = []
+
+    # loop through each patient.
+    for arr in iter(x_train):
+
+        # offset array to get a smaller one
+        offsetArr = offsetPatch(arr, finalSize)
+
+        # get miniPatch (0~9)
+        randInt = random.randint(0,8)
+        miniPatch = getMiniPatch(randInt,offsetArr,imgSize)
+
+        # reshape to make channel
+        miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+
+        # EXTRACT SLIMMED DOWN CUBE
+        miniPatch = miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]
+
+        
+        # flip bools
+        flipBoolud = bool(random.getrandbits(1))
+        flipBoolio = bool(random.getrandbits(1))
+        flipBoolrl = bool(random.getrandbits(1))
+
+        #
+        if flipBoolud:
+            miniPatch =  np.fliplr(miniPatch)    
+        if flipBoolio:
+            miniPatch =  np.flipud(miniPatch) 
+        if flipBoolrl:
+            miniPatch =  miniPatch[:,:,::-1]
+
+        # rotation
+        # angleList = [-180,-90,0,90,180]
+        # randAng = angleList [ random.randint(0,4) ]
+        theta = np.pi / 180 * np.random.uniform(-180, 180)  # randAng #   
+        #
+        miniPatch = applyRotation(miniPatch,theta) 
+
+        # OTHER AUGMENTATIONS COME HERE
+
+
+        # EXTRACT SINGLE
+        arr_list.append (  miniPatch )
+     
+        
+    # AFTER LOOP
+    # RANDOMIZE
+    idx = np.random.permutation( len(x_train))
+    # all is 5, batch size is 2, batch proper is 4, no of batches is 2
+    batchProper = len(x_train) - (len(x_train)%batchSize) 
+    noOfBatches = batchProper / batchSize
+    # reorder all and take first batch*int entries i.e. leave remainder out, then split
+    x_train_new = np.split  (   np.array( arr_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+    #
+    y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
+    clinical_train_out = np.split  (   clinical_train         [idx] [:batchProper]   , noOfBatches )  
+
+
+    return x_train_new,y_train_out,clinical_train_out
+
+# runs every epoch
+def myGenerator_single3D(x_train,y_train,clinical_train,finalSize,imgSize,batchSize, skip):
+
+
+    while True:
+        
+        # these are acually lists of batches
+        x_train_out,y_train_out,clinical_train_out = augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,
+                                                                 finalSize,imgSize,batchSize, skip)
+
+        # print ("final train batch data:" , x_train_out[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
+        
+        batches = 0
+        for   _x_train,_y_train,_clinical_train in zip( 
+            x_train_out,y_train_out,clinical_train_out ):
+
+            yield [_clinical_train , _x_train ] , _y_train   
+
+            batches += 1
+            if batches ==  len(x_train_out) :
+                break
+
+
+
+# VAL/TEST
+
+def splitValTest_single3D(x_valTest,finalSize,imgSize,skip):
+
+    arr_list = []
+
+    # loop through each patient.
+    for arr in iter(x_valTest):
+
+        # offset array to get a smaller one
+        offsetArr = offsetPatch(arr, finalSize)
+
+        # get miniPatch (0~9)
+        # randInt = random.randint(0,9)
+        miniPatch = getMiniPatch(4,offsetArr,imgSize)
+
+        # reshape to make channel
+        miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+
+        # EXTRACT SINGLE
+        arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+     
+    arr_list = np.array( arr_list ) 
+      
+    return arr_list

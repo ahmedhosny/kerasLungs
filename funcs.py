@@ -34,7 +34,7 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3"]  # , , , , "oncopanel" , "moffitt","moffittSpore" ,"oncomap" ,
+    trainList = ["lung1","lung3" ]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore" ,"oncomap"
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -199,6 +199,39 @@ def make3dConvModel(imgSize,count):
     return model
 
 
+def makeSingle3dConvModel(imgSize,skip):
+    # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
+
+    model = Sequential()
+
+    conv_filt = 3
+    conv_filt_depth = 2
+    init = "he_normal"
+    #
+
+    # input = (samples, count*2+1,imgSize,imgSize,1 )
+    model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, init = init , border_mode='same',dim_ordering='tf' ,input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1]  , activation='relu')) # 32
+    # output (samples, count*2+1,imgSize,imgSize, nb_filter)
+
+    model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt,init = init , border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+    model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
+    model.add( Dropout(0.5) )
+
+    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt, init = init , border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+
+    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt, init = init , border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+    model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
+    model.add(Dropout(0.5))
+    
+    model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
+
+    model.add(Flatten())
+    model.add( Dense(512 , activation='relu' ) ) # 512
+    model.add(Dropout(0.5))
+    
+    return model
+
+
 #
 #
 #     `7MMF' `YMM' `7MM"""YMM  `7MM"""Mq.        db       .M"""bgd     `7MMF'  `7MMF'`7MMF' .M"""bgd MMP""MM""YMM
@@ -305,19 +338,34 @@ class Histories(keras.callbacks.Callback):
         # lets do featurewiseCenterAndStd - its still a cube at this point
         x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
 
-        # lets get the 3 orientations
-        x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count)
-        print ("final val data:" , x_val_a.shape,x_val_s.shape,x_val_c.shape)
 
-        # now lets break them into chuncks divisible by 9 to fit into the GPU
-        self.y_val = getChuncks(y_val, self.count , self.reduced)
-        self.x_val_a = getChuncks(x_val_a, self.count , self.reduced)   
-        self.x_val_s = getChuncks(x_val_s, self.count , self.reduced)
-        self.x_val_c = getChuncks(x_val_c, self.count , self.reduced)
-        self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
+        if fork:
+            # lets get the 3 orientations
+            x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count)
+            print ("final val data:" , x_val_a.shape,x_val_s.shape,x_val_c.shape)
 
-        print ("part of validate data: " , self.x_val_a[0].shape )
-        print ("part of validate labels: " , self.y_val[0].shape )
+            # now lets break them into chuncks divisible by 9 to fit into the GPU
+            self.y_val = getChuncks(y_val, self.count , self.reduced)
+            self.x_val_a = getChuncks(x_val_a, self.count , self.reduced)   
+            self.x_val_s = getChuncks(x_val_s, self.count , self.reduced)
+            self.x_val_c = getChuncks(x_val_c, self.count , self.reduced)
+            self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
+
+            print ("part of validate data: " , self.x_val_a[0].shape )
+            print ("part of validate labels: " , self.y_val[0].shape )
+
+        else:
+            x_val = krs.splitValTest_single3D(x_val_cs,finalSize,imgSize,skip)
+
+            print ("final val data:" , x_val.shape)
+
+            # now lets break them into chuncks divisible by 9 to fit into the GPU
+            self.y_val = getChuncks(y_val, self.count , self.reduced)
+            self.x_val = getChuncks(x_val, self.count , self.reduced)   
+            self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
+
+            print ("part of validate data: " , self.x_val[0].shape )
+            print ("part of validate labels: " , self.y_val[0].shape )
 
 
     def on_train_end(self, logs={}):
@@ -343,8 +391,13 @@ class Histories(keras.callbacks.Callback):
         rawLogits = []
         #
         for i in range (self.count ):
-            # get predictions
-            y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  )
+
+            if fork:
+                # get predictions
+                y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  )
+            else:
+                y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  )
+
             # save raw logits
             rawLogits.extend( y_pred  ) 
             # group by patient - to get one prediction per patient only
@@ -379,7 +432,6 @@ class Histories(keras.callbacks.Callback):
         print ("wtf2")
 
 
-
         self.val_logits.append(allLogits)
         self.train_loss.append(logs.get('loss'))
         
@@ -395,7 +447,12 @@ class Histories(keras.callbacks.Callback):
         #
         for i in range (self.count ):
             # now do loss
-            temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  , self.y_val[i] )
+
+            if fork:
+                temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  , self.y_val[i] )
+            else:
+                temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  , self.y_val[i] )
+
             validation_loss.append ( temp )
         validation_loss_avg = np.mean(validation_loss)
         self.val_loss.append(validation_loss_avg)
