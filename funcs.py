@@ -34,7 +34,7 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3" ]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore" ,"oncomap"
+    trainList = ["lung1","lung3" ]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap"
     validateList = ["lung2"]
     testList = ["nsclc_rt"]
 
@@ -340,7 +340,7 @@ class Histories(keras.callbacks.Callback):
 
         if fork:
             # lets get the 3 orientations
-            x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count)
+            x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode)
             print ("final val data:" , x_val_a.shape,x_val_s.shape,x_val_c.shape)
 
             # now lets break them into chuncks divisible by 9 to fit into the GPU

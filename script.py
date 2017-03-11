@@ -15,8 +15,8 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "10"
-mode = "3d"
+RUN = "11"
+mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 1000
@@ -27,7 +27,8 @@ imgSize = 120 # 108
 valTestMultiplier = 1
 
 # for single3d
-fork = False
+fork = True
+# if fork false:
 skip = 3 # (imgSize/skip should be int)
 
 #
@@ -106,6 +107,7 @@ with tf.device('/gpu:0'):
 
     # center and standardize - at this point its just the cubes
     mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
+    print ( "mean and std shape: " ,mean.shape,std.shape )
 
     # pass back to funcs
     funcs.mean = mean
@@ -116,11 +118,13 @@ with tf.device('/gpu:0'):
 
     if fork:
 
-        model.fit_generator( krs.myGenerator(x_train_cs,y_train,clinical_train,finalSize,imgSize,count,batch_size) ,
+        model.fit_generator( krs.myGenerator(x_train_cs,y_train,clinical_train,finalSize,imgSize,count,batch_size,mode) ,
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
                     class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
+
+
 
     else:
 

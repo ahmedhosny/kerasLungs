@@ -95,18 +95,18 @@ def applyRotation(arr,theta):
 
 #
 #
-#     MMP""MM""YMM `7MM"""Mq.        db      `7MMF'`7MN.   `7MF'
-#     P'   MM   `7   MM   `MM.      ;MM:       MM    MMN.    M
-#          MM        MM   ,M9      ,V^MM.      MM    M YMb   M
-#          MM        MMmmdM9      ,M  `MM      MM    M  `MN. M
-#          MM        MM  YM.      AbmmmqMA     MM    M   `MM.M
-#          MM        MM   `Mb.   A'     VML    MM    M     YMM
-#        .JMML.    .JMML. .JMM..AMA.   .AMMA..JMML..JML.    YM
-#
-#
+#              `7MM"""Yb.
+#                MM    `Yb.
+#      pd""b.    MM     `Mb
+#     (O)  `8b   MM      MM
+#          ,89   MM     ,MP
+#        ""Yb.   MM    ,dP'
+#           88 .JMMmmmdP'
+#     (O)  .M'
+#      bmmmd'
 
 # augments, randmoizes and splits into batches.
-def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count, batchSize):
+def augmentAndSplitTrain_3Dand2D(x_train,y_train,clinical_train,finalSize,imgSize,count, batchSize, mode):
     
 
     arr_a_list = []
@@ -119,11 +119,13 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
         # offset array to get a smaller one
         offsetArr = offsetPatch(arr, finalSize)
 
-        # get miniPatch (0~9)
-        randInt = random.randint(0,8)
-        miniPatch = getMiniPatch(randInt,offsetArr,imgSize)
+        # get random miniPatch 
+        offstX = random.randint(0,finalSize-imgSize)
+        offstY = random.randint(0,finalSize-imgSize)
+        offstZ = random.randint(0,finalSize-imgSize)
+        miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
 
-        # reshape to make channel
+        # reshape to make one channel
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
 
         # flip bools
@@ -140,9 +142,9 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
             miniPatch =  miniPatch[:,:,::-1]
 
         # rotation
-        angleList = [-180,-90,0,90,180]
-        randAng = angleList [ random.randint(0,4) ]
-        theta = np.pi / 180 * randAng #   np.random.uniform(-180, 180)
+        # angleList = [-180,-90,0,90,180]
+        # randAng = angleList [ random.randint(0,4) ]
+        theta = np.pi / 180 * np.random.uniform(-180, 180)
         #
         miniPatch = applyRotation(miniPatch,theta) 
 
@@ -152,14 +154,24 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
         skip = 4 # in mm or pixel
         travel = int(count * skip)
         mid  = int(imgSize/2.0)
-        #
-        arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
-        #
-        arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
-        arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
-        #
-        arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
-        arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+
+        if mode == "3d":
+
+            #
+            arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+            #
+            arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+            arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+            #
+            arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+            arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+
+        elif mode == "2d":
+
+            arr_a_list.append( miniPatch [mid,:,:] )
+            arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
+            arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
+
         
     # AFTER LOOP
     # RANDOMIZE
@@ -172,8 +184,6 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
     s_train = np.split  (   np.array( arr_s_list, 'float32') [idx] [:batchProper]   , noOfBatches )
     c_train = np.split  (   np.array( arr_c_list, 'float32') [idx] [:batchProper]   , noOfBatches )
 
-    # print (  y_train.shape ) 
-
     y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
     clinical_train_out = np.split  (   clinical_train         [idx] [:batchProper]   , noOfBatches )  
 
@@ -181,14 +191,14 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
     return a_train,s_train,c_train,y_train_out,clinical_train_out
 
 # runs every epoch
-def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize):
+def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize,mode):
 
 
     while True:
         
         # these are acually lists of batches
-        a_train,s_train,c_train,y_train_out,clinical_train_out = augmentAndSplitTrain(x_train,y_train,clinical_train,
-                                                                 finalSize,imgSize,count,batchSize)
+        a_train,s_train,c_train,y_train_out,clinical_train_out = augmentAndSplitTrain_3Dand2D(x_train,y_train,clinical_train,
+                                                                 finalSize,imgSize,count,batchSize,mode)
 
         # print ("final train batch data:" , a_train[0].shape,s_train[0].shape,c_train[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
         
@@ -204,21 +214,9 @@ def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize
 
 
 
-#
-#                                             AW
-#     `7MMF'   `7MF' db      `7MMF'          ,M'MMP""MM""YMM `7MM"""YMM   .M"""bgd MMP""MM""YMM
-#       `MA     ,V  ;MM:       MM            MV P'   MM   `7   MM    `7  ,MI    "Y P'   MM   `7
-#        VM:   ,V  ,V^MM.      MM           AW       MM        MM   d    `MMb.          MM
-#         MM.  M' ,M  `MM      MM          ,M'       MM        MMmmMM      `YMMNq.      MM
-#         `MM A'  AbmmmqMA     MM      ,   MV        MM        MM   Y  , .     `MM      MM
-#          :MM;  A'     VML    MM     ,M  AW         MM        MM     ,M Mb     dM      MM
-#           VF .AMA.   .AMMA..JMMmmmmMMM ,M'       .JMML.    .JMMmmmmMMM P"Ybmmd"     .JMML.
-#                                        MV
-#                                       AW
+# val/test
 
-
-
-def splitValTest(x_valTest,finalSize,imgSize,count):
+def splitValTest(x_valTest,finalSize,imgSize,count,mode):
 
     arr_a_list = []
     arr_s_list = []
@@ -242,14 +240,24 @@ def splitValTest(x_valTest,finalSize,imgSize,count):
         skip = 4 # in mm or pixel
         travel = int(count * skip)
         mid  = int(imgSize/2.0)
-        #
-        arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
-        #
-        arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
-        arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
-        #
-        arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
-        arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+
+
+        if mode == "3d":
+
+            #
+            arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+            #
+            arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+            arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+            #
+            arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+            arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+
+        elif mode == "2d":
+
+            arr_a_list.append( miniPatch [mid,:,:] )
+            arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
+            arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
 
 
         
@@ -289,9 +297,11 @@ def augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,finalSize,imgSi
         # offset array to get a smaller one
         offsetArr = offsetPatch(arr, finalSize)
 
-        # get miniPatch (0~9)
-        randInt = random.randint(0,8)
-        miniPatch = getMiniPatch(randInt,offsetArr,imgSize)
+        # get random miniPatch 
+        offstX = random.randint(0,finalSize-imgSize)
+        offstY = random.randint(0,finalSize-imgSize)
+        offstZ = random.randint(0,finalSize-imgSize)
+        miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
 
         # reshape to make channel
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
@@ -299,7 +309,7 @@ def augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,finalSize,imgSi
         # EXTRACT SLIMMED DOWN CUBE
         miniPatch = miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]
 
-        
+
         # flip bools
         flipBoolud = bool(random.getrandbits(1))
         flipBoolio = bool(random.getrandbits(1))
@@ -391,3 +401,5 @@ def splitValTest_single3D(x_valTest,finalSize,imgSize,skip):
     arr_list = np.array( arr_list ) 
       
     return arr_list
+
+
