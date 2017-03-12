@@ -15,12 +15,13 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "12"
+RUN = "13"
+print ("run: " , RUN)
 mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 1000
-lr = 0.000001 # 0.000001
+lr = 0.00001 # 0.000001
 count = 5 # for 3d mode, no i=og images to take in every direction
 finalSize = 150 # from 150 down to.. 150
 imgSize = 120 # 120
@@ -120,7 +121,7 @@ with tf.device('/gpu:0'):
 
         model.fit_generator( krs.myGenerator(x_train_cs,y_train,clinical_train,finalSize,imgSize,count,batch_size,mode) ,
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                    class_weight={0 : zeroWeight, 1: oneWeight},
+                    # class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
 
