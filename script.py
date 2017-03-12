@@ -15,15 +15,15 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "11"
+RUN = "12"
 mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 1000
-lr = 0.00001 # 0.000001
+lr = 0.000001 # 0.000001
 count = 5 # for 3d mode, no i=og images to take in every direction
-finalSize = 150 # from 150 down to..
-imgSize = 120 # 108
+finalSize = 150 # from 150 down to.. 150
+imgSize = 120 # 120
 valTestMultiplier = 1
 
 # for single3d
