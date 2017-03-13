@@ -70,7 +70,7 @@ def manageDataFrames():
 
 
 
-def getXandY(dataFrame,imgSize,count, bool):
+def getXandY(dataFrame,imgSize, bool):
 
     # if train, aug factor is always one.
     augmentationFactor = 1
@@ -172,37 +172,66 @@ def make2dConvModel(imgSize):
     return model
 
 
-
 def make3dConvModel(imgSize,count):
-    # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
-
+    #(samples, rows, cols, channels) if dim_ordering='tf'.
+    
     model = Sequential()
 
-    conv_filt = 3
-    conv_filt_depth = 2
-    #
+    model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] )) # 32
+    model.add(Activation('relu'))
 
-    # input = (samples, count*2+1,imgSize,imgSize,1 )
-    model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
-    # output (samples, count*2+1,imgSize,imgSize, nb_filter)
+    model.add(Convolution3D(48, 2, 5, 5)) # 32
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2))) ### 
+    model.add(Dropout(0.25))
 
-    model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
-    model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
-    model.add( Dropout(0.5) )
+    model.add(Convolution3D(96, 2, 5, 5, border_mode='same')) # 64
+    model.add(Activation('relu'))
 
-    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+    model.add(Convolution3D(96, 1, 5 , 5)) # 64
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
-    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
-    model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
-    model.add(Dropout(0.5))
-    
-    # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
 
     model.add(Flatten())
-    model.add( Dense(512 , activation='relu' ) ) # 512
+    model.add(Dense(512)) # 512
+    model.add(Activation('relu'))
     model.add(Dropout(0.5))
     
     return model
+
+
+# def make3dConvModel(imgSize,count):
+#     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
+
+#     model = Sequential()
+
+#     conv_filt = 3
+#     conv_filt_depth = 2
+#     #
+
+#     # input = (samples, count*2+1,imgSize,imgSize,1 )
+#     model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
+#     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
+
+#     model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+#     model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
+#     model.add( Dropout(0.5) )
+
+#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+
+#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+#     model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
+#     model.add(Dropout(0.5))
+    
+#     # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
+
+#     model.add(Flatten())
+#     model.add( Dense(512 , activation='relu' ) ) # 512
+#     model.add(Dropout(0.5))
+    
+#     return model
 
 
 def makeSingle3dConvModel(imgSize,skip):
@@ -337,7 +366,7 @@ class Histories(keras.callbacks.Callback):
 
         dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
         #
-        x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize,count, True)
+        x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
         print ("validation data:" , x_val.shape,  y_val.shape , clinical_val.shape ) 
 
         # lets do featurewiseCenterAndStd - its still a cube at this point
@@ -471,42 +500,4 @@ class Histories(keras.callbacks.Callback):
     def on_batch_end(self, batch, logs={}):
 
         return
-
-
-#
-#
-#     `7MMF' `YMM' `7MM"""YMM  `7MM"""Mq.        db       .M"""bgd       .g8"""bgd `7MM"""YMM  `7MN.   `7MF'`7MM"""YMM  `7MM"""Mq.        db   MMP""MM""YMM   .g8""8q. `7MM"""Mq.
-#       MM   .M'     MM    `7    MM   `MM.      ;MM:     ,MI    "Y     .dP'     `M   MM    `7    MMN.    M    MM    `7    MM   `MM.      ;MM:  P'   MM   `7 .dP'    `YM. MM   `MM.
-#       MM .d"       MM   d      MM   ,M9      ,V^MM.    `MMb.         dM'       `   MM   d      M YMb   M    MM   d      MM   ,M9      ,V^MM.      MM      dM'      `MM MM   ,M9
-#       MMMMM.       MMmmMM      MMmmdM9      ,M  `MM      `YMMNq.     MM            MMmmMM      M  `MN. M    MMmmMM      MMmmdM9      ,M  `MM      MM      MM        MM MMmmdM9
-#       MM  VMA      MM   Y  ,   MM  YM.      AbmmmqMA   .     `MM     MM.    `7MMF' MM   Y  ,   M   `MM.M    MM   Y  ,   MM  YM.      AbmmmqMA     MM      MM.      ,MP MM  YM.
-#       MM   `MM.    MM     ,M   MM   `Mb.   A'     VML  Mb     dM     `Mb.     MM   MM     ,M   M     YMM    MM     ,M   MM   `Mb.   A'     VML    MM      `Mb.    ,dP' MM   `Mb.
-#     .JMML.   MMb..JMMmmmmMMM .JMML. .JMM..AMA.   .AMMA.P"Ybmmd"        `"bmmmdPY .JMMmmmmMMM .JML.    YM  .JMMmmmmMMM .JMML. .JMM..AMA.   .AMMA..JMML.      `"bmmd"' .JMML. .JMM.
-#
-# 
-
-# this runs every epoch
-
-# def createGenerator( clinical, A, S, C, Y, batch_size, generator):
-
-#     while True:
-#         # suffled indices    
-#         idx = np.random.permutation( A.shape[0])
-#         # create image generator
-
-#         batches_A = generator.flow( A[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1)
-#         batches_S = generator.flow( S[idx], clinical[idx], batch_size=batch_size , shuffle=False, seed = 1) # Y is not needed here - switch to clinical
-#         batches_C = generator.flow( C[idx], Y[idx], batch_size=batch_size , shuffle=False, seed = 1) # Y is not needed here ..
-
-#         batches = 0
-#         for  batch_a , batch_s , batch_c , counter in zip( batches_A , batches_S , batches_C , np.arange(batch_size) ):
-
-#             yield [batch_s[1] , batch_a[0] , batch_s[0] , batch_c[0] ] , batch_a[1]
-
-#             batches += 1
-#             if batches >=  ( A.shape[0] / batch_size):
-#                 # we need to break the loop by hand because
-#                 # the generator loops indefinitely
-#                 break
-
 

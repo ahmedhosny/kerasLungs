@@ -15,16 +15,16 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "14"
+RUN = "15"
 print ("run: B " , RUN)
-mode = "2d"
+mode = "3d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 2000
 lr = 0.00001 # 0.000001
-count = 5 # for 3d mode, no i=og images to take in every direction
+count = 3 # for 3d mode, no i=og images to take in every direction
 finalSize = 150 # from 150 down to.. 150
-imgSize = 120 # 120
+imgSize = 80 # 120
 valTestMultiplier = 1
 
 # for single3d
@@ -50,7 +50,7 @@ funcs.skip = skip
 
 dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 #
-x_train,y_train,zeros,ones,clinical_train =  funcs.getXandY(dataFrameTrain,imgSize,count, False)
+x_train,y_train,zeros,ones,clinical_train =  funcs.getXandY(dataFrameTrain,imgSize, False)
 print ("train data:" , x_train.shape,  y_train.shape , clinical_train.shape ) 
 
 print ("zeros: " , zeros , "ones: " , ones)
@@ -121,7 +121,7 @@ with tf.device('/gpu:0'):
 
         model.fit_generator( krs.myGenerator(x_train_cs,y_train,clinical_train,finalSize,imgSize,count,batch_size,mode) ,
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                    # class_weight={0 : zeroWeight, 1: oneWeight},
+                    class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
 
