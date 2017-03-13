@@ -158,6 +158,12 @@ def make2dConvModel(imgSize):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
 
+    # this chucnk added - 14
+    model.add(Convolution2D(192, 5, 5)) # 64
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+
     model.add(Flatten())
     model.add(Dense(512)) # 512
     model.add(Activation('relu'))
