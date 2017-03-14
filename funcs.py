@@ -34,9 +34,9 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung3" ]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap"
+    trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
     validateList = ["lung2"]
-    testList = ["nsclc_rt"]
+    testList = ["lung1"]
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
