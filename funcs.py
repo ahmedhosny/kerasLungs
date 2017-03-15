@@ -35,8 +35,8 @@ K.set_image_dim_ordering('tf')
 
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = ["lung2"]
-    testList = ["lung1"]
+    validateList = ["lung1"]
+    testList = ["lung2"]
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -361,7 +361,7 @@ class Histories(keras.callbacks.Callback):
         self.val_logits_raw = []
         self.train_loss = []
         self.val_loss = []
-        self.count = 3 #21 ##############################################################################################################
+        self.count = 8 #21 ##############################################################################################################
         self.reduced = 45
 
         dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
@@ -404,10 +404,6 @@ class Histories(keras.callbacks.Callback):
 
     def on_train_end(self, logs={}):
 
-        # save model and json representation
-        model_json = self.model.to_json()
-        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
-            json_file.write(model_json)
 
         return
 
@@ -459,8 +455,15 @@ class Histories(keras.callbacks.Callback):
         # before appending, check if this auc is the highest in all the lsit
 
         if all(auc1>i for i in self.auc):
+
             self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
             print("Saved model to disk")
+
+            # save model and json representation
+            model_json = self.model.to_json()
+            with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+                json_file.write(model_json)
+
 
         self.auc.append(auc1)
         print ("wtf2")

@@ -6,7 +6,8 @@ import pandas as pd
 
 
 #
-RUN = "11"
+RUN = "17"
+print (" testing : run: A " , RUN)
 mode = "2d"
 finalSize = 150
 imgSize = 120
@@ -14,7 +15,7 @@ fork = True
 count = 200 # only if mode 3d and fork=True
 funcs.valTestMultiplier = 1
 #
-chunkCount = 10
+chunkCount = 3
 chunkReduced = 45
 # 
 skip = 3 # if fork false: imgSize/skip should be int
@@ -24,21 +25,21 @@ dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 # get only death by disease
 # all patients with cause of death 1
-diseaseDeath = np.load("rt_diseaseDeath.npy").astype(str)
-print (len(diseaseDeath))
+# diseaseDeath = np.load("rt_diseaseDeath.npy").astype(str)
+# print (len(diseaseDeath))
 
-dataFrameTest0 = dataFrameTest[ dataFrameTest['deadstat'] == 0.0 ]
-print (dataFrameTest0.shape)
+# dataFrameTest0 = dataFrameTest[ dataFrameTest['deadstat'] == 0.0 ]
+# print (dataFrameTest0.shape)
 
-dataFrameTest1 = dataFrameTest[ dataFrameTest['deadstat'] == 1.0 ]
-print (dataFrameTest1.shape)
+# dataFrameTest1 = dataFrameTest[ dataFrameTest['deadstat'] == 1.0 ]
+# print (dataFrameTest1.shape)
 
-dataFrameTest1_1 = dataFrameTest1 [ dataFrameTest1["patient"].isin(diseaseDeath) ]
-print (dataFrameTest1_1.shape)
+# dataFrameTest1_1 = dataFrameTest1 [ dataFrameTest1["patient"].isin(diseaseDeath) ]
+# print (dataFrameTest1_1.shape)
 
-dataFrameTest = pd.concat([dataFrameTest0,dataFrameTest1_1],axis=0)
-dataFrameTest = dataFrameTest.reset_index(drop=True)
-print dataFrameTest.shape
+# dataFrameTest = pd.concat([dataFrameTest0,dataFrameTest1_1],axis=0)
+# dataFrameTest = dataFrameTest.reset_index(drop=True)
+# print dataFrameTest.shape
 
 #
 #

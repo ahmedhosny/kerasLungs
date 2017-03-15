@@ -15,8 +15,8 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "16"
-print ("run: A " , RUN)
+RUN = "17"
+print (" training : run: C " , RUN)
 mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
