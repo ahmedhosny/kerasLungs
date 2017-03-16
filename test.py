@@ -3,6 +3,9 @@ import krs
 from keras.models import model_from_json
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+from keras import backend as K
+
 
 
 #
@@ -14,14 +17,10 @@ imgSize = 120
 fork = True
 count = 200 # only if mode 3d and fork=True
 funcs.valTestMultiplier = 1
-#
-chunkCount = 3
-chunkReduced = 45
 # 
 skip = 3 # if fork false: imgSize/skip should be int
 
-# get dataframes
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+
 
 # get only death by disease
 # all patients with cause of death 1
@@ -47,15 +46,56 @@ dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 #
 
 
-# get mean and std from training first
+#
+#
+#       .g8"""bgd `7MM"""YMM MMP""MM""YMM     `7MM"""Yb.      db   MMP""MM""YMM   db
+#     .dP'     `M   MM    `7 P'   MM   `7       MM    `Yb.   ;MM:  P'   MM   `7  ;MM:
+#     dM'       `   MM   d        MM            MM     `Mb  ,V^MM.      MM      ,V^MM.
+#     MM            MMmmMM        MM            MM      MM ,M  `MM      MM     ,M  `MM
+#     MM.    `7MMF' MM   Y  ,     MM            MM     ,MP AbmmmqMA     MM     AbmmmqMA
+#     `Mb.     MM   MM     ,M     MM            MM    ,dP'A'     VML    MM    A'     VML
+#       `"bmmmdPY .JMMmmmmMMM   .JMML.        .JMMmmmdP'.AMA.   .AMMA..JMML..AMA.   .AMMA.
+#
+#
+
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+
+#
+#
+#     MMP""MM""YMM `7MM"""Mq.        db      `7MMF'`7MN.   `7MF'
+#     P'   MM   `7   MM   `MM.      ;MM:       MM    MMN.    M
+#          MM        MM   ,M9      ,V^MM.      MM    M YMb   M
+#          MM        MMmmdM9      ,M  `MM      MM    M  `MN. M
+#          MM        MM  YM.      AbmmmqMA     MM    M   `MM.M
+#          MM        MM   `Mb.   A'     VML    MM    M     YMM
+#        .JMML.    .JMML. .JMM..AMA.   .AMMA..JMML..JML.    YM
+#
+#
+
 x_train,y_train,zeros,ones,clinical_train =  funcs.getXandY(dataFrameTrain,imgSize, False)
 mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
 print ( "mean and std shape: " ,mean.shape,std.shape )
 
-# get test data
+print ("zeros: " , zeros , "ones: " , ones)
+zeroWeight = ones / ((ones+zeros)*1.0)
+oneWeight = zeros / ((ones+zeros)*1.0)
+print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
+
+
+#
+#
+#     MMP""MM""YMM `7MM"""YMM   .M"""bgd MMP""MM""YMM
+#     P'   MM   `7   MM    `7  ,MI    "Y P'   MM   `7
+#          MM        MM   d    `MMb.          MM
+#          MM        MMmmMM      `YMMNq.      MM
+#          MM        MM   Y  , .     `MM      MM
+#          MM        MM     ,M Mb     dM      MM
+#        .JMML.    .JMMmmmmMMM P"Ybmmd"     .JMML.
+#
+
+
 x_test,y_test,zeros,ones,clinical_test =  funcs.getXandY(dataFrameTest,imgSize, False)
 print ("train data:" , x_test.shape,  y_test.shape , clinical_test.shape ) 
-
 
 # center and standardize
 x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
@@ -66,30 +106,23 @@ if fork:
     x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode)
     print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
 
-    # now lets break them into chuncks 
-    y_test = funcs.getChuncks(y_test, chunkCount , chunkReduced)
-    x_test_a = funcs.getChuncks(x_test_a, chunkCount, chunkReduced)   
-    x_test_s = funcs.getChuncks(x_test_s, chunkCount , chunkReduced)
-    x_test_c = funcs.getChuncks(x_test_c, chunkCount , chunkReduced)
-    clinical_test = funcs.getChuncks(clinical_test, chunkCount , chunkReduced)
-
-    print ("part of validate data: " , x_test_a[0].shape )
-    print ("part of validate labels: " , y_test[0].shape )
-
 else:
     x_test = krs.splitValTest_single3D(x_test_cs,finalSize,imgSize,skip)
-
     print ("final val data:" , x_test.shape)
 
-    # now lets break them into chuncks divisible by 9 to fit into the GPU
-    y_test = getChuncks(y_test, chunkCount , chunkReduced)
-    x_test = getChuncks(x_test, chunkCount , chunkReduced)   
-    clinical_test = getChuncks(clinical_test, chunkCount , chunkReduced)
 
-    print ("part of validate data: " , x_test[0].shape )
-    print ("part of validate labels: " , y_test[0].shape )
+#
+#
+#       .g8"""bgd `7MM"""YMM MMP""MM""YMM     `7MMM.     ,MMF' .g8""8q. `7MM"""Yb. `7MM"""YMM  `7MMF'
+#     .dP'     `M   MM    `7 P'   MM   `7       MMMb    dPMM .dP'    `YM. MM    `Yb. MM    `7    MM
+#     dM'       `   MM   d        MM            M YM   ,M MM dM'      `MM MM     `Mb MM   d      MM
+#     MM            MMmmMM        MM            M  Mb  M' MM MM        MM MM      MM MMmmMM      MM
+#     MM.    `7MMF' MM   Y  ,     MM            M  YM.P'  MM MM.      ,MP MM     ,MP MM   Y  ,   MM      ,
+#     `Mb.     MM   MM     ,M     MM            M  `YM'   MM `Mb.    ,dP' MM    ,dP' MM     ,M   MM     ,M
+#       `"bmmmdPY .JMMmmmmMMM   .JMML.        .JML. `'  .JMML. `"bmmd"' .JMMmmmdP' .JMMmmmmMMM .JMMmmmmMMM
+#
+#
 
-# get the model
 # load json and create model
 json_file = open( "/home/ubuntu/output/" + RUN + '_json.json' , 'r')
 loaded_model_json = json_file.read()
@@ -99,46 +132,113 @@ myModel = model_from_json(loaded_model_json)
 myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 
 
-# get AUC
 
-allLabels = []
-allLogits = []
-rawLogits = []
 #
-for i in range (chunkCount ):
+#
+#     `7MM"""YMM `7MMF'   `7MF'`7MN.   `7MF' .g8"""bgd  .M"""bgd
+#       MM    `7   MM       M    MMN.    M .dP'     `M ,MI    "Y
+#       MM   d     MM       M    M YMb   M dM'       ` `MMb.
+#       MM""MM     MM       M    M  `MN. M MM            `YMMNq.
+#       MM   Y     MM       M    M   `MM.M MM.         .     `MM
+#       MM         YM.     ,M    M     YMM `Mb.     ,' Mb     dM
+#     .JMML.        `bmmmmd"'  .JML.    YM   `"bmmmd'  P"Ybmmd"
+#
+#
+
+if fork:
+
+    # (0 = test, 1 = train) 
+    axialFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , tf.constant(0)  ], 
+                       [ myModel.layers[0].layers[1].layers[-1].output ] )
+
+    sagittalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , tf.constant(0)  ], 
+                       [ myModel.layers[0].layers[2].layers[-1].output ] )
+
+    coronalFunc = K.function([ myModel.layers[0].layers[3].layers[0].input , tf.constant(0)  ], 
+                       [ myModel.layers[0].layers[3].layers[-1].output ] )
+
+    mergeFunc = K.function([ myModel.layers[1].input , tf.constant(0)  ], 
+                       [ myModel.layers[2].output ] ) # 2 is before softmax, 3 is softmax
+
+else:
+
+    print("no fork - not tested")
+
+
+#
+#
+#     `7MMF'        .g8""8q.     .g8""8q. `7MM"""Mq.
+#       MM        .dP'    `YM. .dP'    `YM. MM   `MM.
+#       MM        dM'      `MM dM'      `MM MM   ,M9
+#       MM        MM        MM MM        MM MMmmdM9
+#       MM      , MM.      ,MP MM.      ,MP MM
+#       MM     ,M `Mb.    ,dP' `Mb.    ,dP' MM
+#     .JMMmmmmMMM   `"bmmd"'     `"bmmd"' .JMML.
+#
+#
+
+# allLabels = []
+# allLogits = []
+# rawLogits = []
+#
+for i in range (dataFrameTest.shape[0]):
 
     if fork:
-        # get predictions
-        y_pred = myModel.predict_on_batch ( [ clinical_test[i] , x_test_a[i] , x_test_s[i] , x_test_c[i] ]  )
+        # get the different ones
+        axial512 = axialFunc( [  a_train[i].reshape(1,120,120,1)  ] )
+        sagittal512 = sagittalFunc( [  s_train[i].reshape(1,120,120,1)  ] )
+        coronal512 = coronalFunc( [  c_train[i].reshape(1,120,120,1)  ] )
+        # concat them
+        concat = []
+        concat.extend ( axial512[0][0].tolist() )
+        concat.extend ( sagittal512[0][0].tolist() )
+        concat.extend ( coronal512[0][0].tolist() )
+        #
+        concat = np.array(concat ,'float32').reshape(1,len(concat))
+        # now do one last function
+        logits = mergeFunc( [concat])
+        print logits[0][0]
     else:
-        y_pred = myModel.predict_on_batch ( [ clinical_test[i] , x_test[i] ]  )
-
-    # save raw logits
-    rawLogits.extend( y_pred  ) 
-    # group by patient - to get one prediction per patient only
-    labelsOut,logitsOut = funcs.aggregate( y_test[i] , y_pred )
-    #
-    allLabels.extend(labelsOut)
-    allLogits.extend(logitsOut)
-    #
+        print("no fork - not tested")
 
 
-# save logits
-np.save( "/home/ubuntu/output/" + RUN + "_test_logits_raw.npy", rawLogits )
 
 
-allLabels = np.array(allLabels)
-allLogits = np.array(allLogits)
-
-print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape ) # 528
 
 
-# get 2 auc's
-print ("wtf1")
-auc1 , auc2 = funcs.AUC(  allLabels ,  allLogits )
-print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
-# before appending, check if this auc is the highest in all the lsit
-print ("wtf2")
+
+#     if fork:
+#         # get predictions
+#         y_pred = myModel.predict_on_batch ( [ clinical_test[i] , x_test_a[i] , x_test_s[i] , x_test_c[i] ]  )
+#     else:
+#         y_pred = myModel.predict_on_batch ( [ clinical_test[i] , x_test[i] ]  )
+
+#     # save raw logits
+#     rawLogits.extend( y_pred  ) 
+#     # group by patient - to get one prediction per patient only
+#     labelsOut,logitsOut = funcs.aggregate( y_test[i] , y_pred )
+#     #
+#     allLabels.extend(labelsOut)
+#     allLogits.extend(logitsOut)
+#     #
+
+
+# # save logits
+# np.save( "/home/ubuntu/output/" + RUN + "_test_logits_raw.npy", rawLogits )
+
+
+# allLabels = np.array(allLabels)
+# allLogits = np.array(allLogits)
+
+# print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape ) # 528
+
+
+# # get 2 auc's
+# print ("wtf1")
+# auc1 , auc2 = funcs.AUC(  allLabels ,  allLogits )
+# print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+# # before appending, check if this auc is the highest in all the lsit
+# print ("wtf2")
 
 
 

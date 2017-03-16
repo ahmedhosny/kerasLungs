@@ -34,9 +34,9 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = ["lung1"]
-    testList = ["lung2"]
+    trainList = ["lung2","lung1"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
+    validateList = []
+    testList = ["nsclc_rt"]
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -49,7 +49,7 @@ def manageDataFrames():
     ( pd.notnull( dataFrame["stage"] ) ) &
     ( pd.notnull( dataFrame["age"] ) ) &
     ( pd.isnull( dataFrame["patch_failed"] ) )
-    # & ( dataFrame["stage"] == 1.0 ) 
+    # & ( dataFrame["stage"] == 3.0 ) 
     ]
     dataFrame = dataFrame.reset_index(drop=True)
     print ("all patients: " , dataFrame.shape)
@@ -202,6 +202,35 @@ def make3dConvModel(imgSize,count):
     return model
 
 
+def makeSingle3dConvModel(imgSize,skip):
+    #(samples, rows, cols, channels) if dim_ordering='tf'.
+    
+    model = Sequential()
+
+    model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] )) # 32
+    model.add(Activation('relu'))
+
+    model.add(Convolution3D(48, 2, 5, 5)) # 32
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2))) ### 
+    model.add(Dropout(0.25))
+
+    model.add(Convolution3D(96, 2, 5, 5, border_mode='same')) # 64
+    model.add(Activation('relu'))
+
+    model.add(Convolution3D(96, 1, 5 , 5)) # 64
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
+
+
+    model.add(Flatten())
+    model.add(Dense(512)) # 512
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    
+    return model
+
 # def make3dConvModel(imgSize,count):
 #     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
 
@@ -234,36 +263,36 @@ def make3dConvModel(imgSize,count):
 #     return model
 
 
-def makeSingle3dConvModel(imgSize,skip):
-    # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
+# def makeSingle3dConvModel(imgSize,skip):
+#     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
 
-    model = Sequential()
+#     model = Sequential()
 
-    conv_filt = 3
-    conv_filt_depth = 2
-    #
+#     conv_filt = 3
+#     conv_filt_depth = 2
+#     #
 
-    # input = (samples, count*2+1,imgSize,imgSize,1 )
-    model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1]  , activation='relu')) # 32
-    # output (samples, count*2+1,imgSize,imgSize, nb_filter)
+#     # input = (samples, count*2+1,imgSize,imgSize,1 )
+#     model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1]  , activation='relu')) # 32
+#     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
 
-    model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
-    model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
-    model.add( Dropout(0.5) )
+#     model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
+#     model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
+#     model.add( Dropout(0.5) )
 
-    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
+#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
 
-    model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
-    model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
-    model.add(Dropout(0.5))
+#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
+#     model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
+#     model.add(Dropout(0.5))
     
-    # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
+#     # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
 
-    model.add(Flatten())
-    model.add( Dense(512 , activation='relu' ) ) # 512
-    model.add(Dropout(0.5))
+#     model.add(Flatten())
+#     model.add( Dense(512 , activation='relu' ) ) # 512
+#     model.add(Dropout(0.5))
     
-    return model
+#     return model
 
 
 #
@@ -356,53 +385,66 @@ def getChuncks(inputa, count, reduced):
 
 class Histories(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
-        self.auc = []
-        self.val_logits = []
-        self.val_logits_raw = []
+
         self.train_loss = []
-        self.val_loss = []
-        self.count = 8 #21 ##############################################################################################################
-        self.reduced = 45
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
-        #
-        x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
-        print ("validation data:" , x_val.shape,  y_val.shape , clinical_val.shape ) 
+        # self.auc = []
+        # self.val_logits = []
+        # self.val_logits_raw = []
+        # self.val_loss = []
+        # self.count = 2 #21 ##############################################################################################################
+        # self.reduced = 45
 
-        # lets do featurewiseCenterAndStd - its still a cube at this point
-        x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
+        # dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
+        # #
+        # x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
+        # print ("validation data:" , x_val.shape,  y_val.shape , clinical_val.shape ) 
+
+        # # lets do featurewiseCenterAndStd - its still a cube at this point
+        # x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
 
 
-        if fork:
-            # lets get the 3 orientations
-            x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode)
-            print ("final val data:" , x_val_a.shape,x_val_s.shape,x_val_c.shape)
+        # if fork:
+        #     # lets get the 3 orientations
+        #     x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode)
+        #     print ("final val data:" , x_val_a.shape,x_val_s.shape,x_val_c.shape)
 
-            # now lets break them into chuncks divisible by 9 to fit into the GPU
-            self.y_val = getChuncks(y_val, self.count , self.reduced)
-            self.x_val_a = getChuncks(x_val_a, self.count , self.reduced)   
-            self.x_val_s = getChuncks(x_val_s, self.count , self.reduced)
-            self.x_val_c = getChuncks(x_val_c, self.count , self.reduced)
-            self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
+        #     # now lets break them into chuncks divisible by 9 to fit into the GPU
+        #     self.y_val = getChuncks(y_val, self.count , self.reduced)
+        #     self.x_val_a = getChuncks(x_val_a, self.count , self.reduced)   
+        #     self.x_val_s = getChuncks(x_val_s, self.count , self.reduced)
+        #     self.x_val_c = getChuncks(x_val_c, self.count , self.reduced)
+        #     self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
 
-            print ("part of validate data: " , self.x_val_a[0].shape )
-            print ("part of validate labels: " , self.y_val[0].shape )
+        #     print ("val data chunks: " , len( self.x_val_a) )
+        #     print ("part of validate data: " , self.x_val_a[0].shape )
+        #     print ("part of validate labels: " , self.y_val[0].shape )
 
-        else:
-            x_val = krs.splitValTest_single3D(x_val_cs,finalSize,imgSize,skip)
+        # else:
+        #     x_val = krs.splitValTest_single3D(x_val_cs,finalSize,imgSize,skip)
 
-            print ("final val data:" , x_val.shape)
+        #     print ("final val data:" , x_val.shape)
 
-            # now lets break them into chuncks divisible by 9 to fit into the GPU
-            self.y_val = getChuncks(y_val, self.count , self.reduced)
-            self.x_val = getChuncks(x_val, self.count , self.reduced)   
-            self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
+        #     # now lets break them into chuncks divisible by 9 to fit into the GPU
+        #     self.y_val = getChuncks(y_val, self.count , self.reduced)
+        #     self.x_val = getChuncks(x_val, self.count , self.reduced)   
+        #     self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
 
-            print ("part of validate data: " , self.x_val[0].shape )
-            print ("part of validate labels: " , self.y_val[0].shape )
+        #     print ("part of validate data: " , self.x_val[0].shape )
+        #     print ("part of validate labels: " , self.y_val[0].shape )
+
+        return
 
 
     def on_train_end(self, logs={}):
+
+        self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+        print("Saved model to disk")
+
+        # save model and json representation
+        model_json = self.model.to_json()
+        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+            json_file.write(model_json)
 
 
         return
@@ -412,88 +454,91 @@ class Histories(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
 
-        #
-        # PREDICT
-        #
-        allLabels = []
-        allLogits = []
-        validation_loss = []
-        rawLogits = []
-        #
-        for i in range (self.count ):
-
-            if fork:
-                # get predictions
-                y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  )
-            else:
-                y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  )
-
-            # save raw logits
-            rawLogits.extend( y_pred  ) 
-            # group by patient - to get one prediction per patient only
-            labelsOut,logitsOut = aggregate( self.y_val[i] , y_pred )
-            #
-            allLabels.extend(labelsOut)
-            allLogits.extend(logitsOut)
-            #
-
-        self.val_logits_raw.append( rawLogits )
-        np.save( "/home/ubuntu/output/" + RUN + "_validation_logits_raw.npy", self.val_logits_raw)
-
-
-        allLabels = np.array(allLabels)
-        allLogits = np.array(allLogits)
-
-        # 
-        print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape )
-
-
-        # get 2 auc's
-        print ("wtf1")
-        auc1 , auc2 = AUC(  allLabels ,  allLogits )
-        print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
-        # before appending, check if this auc is the highest in all the lsit
-
-        if all(auc1>i for i in self.auc):
-
-            self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
-            print("Saved model to disk")
-
-            # save model and json representation
-            model_json = self.model.to_json()
-            with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
-                json_file.write(model_json)
-
-
-        self.auc.append(auc1)
-        print ("wtf2")
-
-
-        self.val_logits.append(allLogits)
         self.train_loss.append(logs.get('loss'))
+        np.save( "/home/ubuntu/output/tests/" + tempFileName + "_train_loss.npy", self.train_loss) # RUN
+
+        # #
+        # # PREDICT
+        # #
+        # allLabels = []
+        # allLogits = []
+        # validation_loss = []
+        # rawLogits = []
+        # #
+        # for i in range (self.count ):
+
+        #     if fork:
+        #         # get predictions
+        #         y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  )
+        #     else:
+        #         y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  )
+
+        #     # save raw logits
+        #     rawLogits.extend( y_pred  ) 
+        #     # group by patient - to get one prediction per patient only
+        #     labelsOut,logitsOut = aggregate( self.y_val[i] , y_pred )
+        #     #
+        #     allLabels.extend(labelsOut)
+        #     allLogits.extend(logitsOut)
+        #     #
+
+        # self.val_logits_raw.append( rawLogits )
+        # np.save( "/home/ubuntu/output/" + RUN + "_validation_logits_raw.npy", self.val_logits_raw)
+
+
+        # allLabels = np.array(allLabels)
+        # allLogits = np.array(allLogits)
+
+        # # 
+        # print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape )
+
+
+        # # get 2 auc's
+        # print ("wtf1")
+        # auc1 , auc2 = AUC(  allLabels ,  allLogits )
+        # print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+        # # before appending, check if this auc is the highest in all the lsit
+
+        # if all(auc1>i for i in self.auc):
+
+        #     self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+        #     print("Saved model to disk")
+
+        #     # save model and json representation
+        #     model_json = self.model.to_json()
+        #     with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+        #         json_file.write(model_json)
+
+
+        # self.auc.append(auc1)
+        # print ("wtf2")
+
+
+        # self.val_logits.append(allLogits)
+        
         
 
         # overwrite every time - no problem
         # save stuff
-        np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
-        np.save( "/home/ubuntu/output/" + RUN + "_validation_logits.npy", self.val_logits)
-        np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss)
+        # np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
+        # np.save( "/home/ubuntu/output/" + RUN + "_validation_logits.npy", self.val_logits)
 
 
-        # validate loss
-        #
-        for i in range (self.count ):
-            # now do loss
 
-            if fork:
-                temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  , self.y_val[i] )
-            else:
-                temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  , self.y_val[i] )
+        # # validate loss
+        # #
+        # for i in range (self.count ):
+        #     # now do loss
 
-            validation_loss.append ( temp )
-        validation_loss_avg = np.mean(validation_loss)
-        self.val_loss.append(validation_loss_avg)
-        np.save( "/home/ubuntu/output/" + RUN + "_validation_loss.npy", self.val_loss)
+        #     if fork:
+        #         temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  , self.y_val[i] )
+        #     else:
+        #         temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  , self.y_val[i] )
+
+        #     validation_loss.append ( temp )
+        # validation_loss_avg = np.mean(validation_loss)
+        # self.val_loss.append(validation_loss_avg)
+        # np.save( "/home/ubuntu/output/" + RUN + "_validation_loss.npy", self.val_loss)
          
         return
 

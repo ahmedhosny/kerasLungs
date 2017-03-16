@@ -106,7 +106,7 @@ def applyRotation(arr,theta):
 #      bmmmd'
 
 # augments, randmoizes and splits into batches.
-def augmentAndSplitTrain_3Dand2D(x_train,y_train,clinical_train,finalSize,imgSize,count, batchSize, mode):
+def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchSize, mode): # clinical_train,
     
 
     arr_a_list = []
@@ -128,27 +128,29 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,clinical_train,finalSize,imgSiz
         # reshape to make one channel
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
 
-        # flip bools
-        flipBoolud = bool(random.getrandbits(1))
-        flipBoolio = bool(random.getrandbits(1))
-        flipBoolrl = bool(random.getrandbits(1))
+        if augmentTraining:
 
-        #
-        if flipBoolud:
-            miniPatch =  np.fliplr(miniPatch)    
-        if flipBoolio:
-            miniPatch =  np.flipud(miniPatch) 
-        if flipBoolrl:
-            miniPatch =  miniPatch[:,:,::-1]
+            # flip bools
+            flipBoolud = bool(random.getrandbits(1))
+            flipBoolio = bool(random.getrandbits(1))
+            flipBoolrl = bool(random.getrandbits(1))
 
-        # rotation
-        # angleList = [-180,-90,0,90,180]
-        # randAng = angleList [ random.randint(0,4) ]
-        theta = np.pi / 180 * np.random.uniform(-180, 180)
-        #
-        miniPatch = applyRotation(miniPatch,theta) 
+            #
+            if flipBoolud:
+                miniPatch =  np.fliplr(miniPatch)    
+            if flipBoolio:
+                miniPatch =  np.flipud(miniPatch) 
+            if flipBoolrl:
+                miniPatch =  miniPatch[:,:,::-1]
 
-        # OTHER AUGMENTATIONS COME HERE
+            # rotation
+            angleList = [-180,-90,0,90,180]
+            randAng = angleList [ random.randint(0,4) ]
+            theta = np.pi / 180 * randAng # np.random.uniform(-180, 180)
+            #
+            miniPatch = applyRotation(miniPatch,theta) 
+
+            # OTHER AUGMENTATIONS COME HERE
 
         # EXTRACT ORIENTATION SLICES
         skip = 4 # in mm or pixel
@@ -185,28 +187,29 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,clinical_train,finalSize,imgSiz
     c_train = np.split  (   np.array( arr_c_list, 'float32') [idx] [:batchProper]   , noOfBatches )
 
     y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
-    clinical_train_out = np.split  (   clinical_train         [idx] [:batchProper]   , noOfBatches )  
 
 
-    return a_train,s_train,c_train,y_train_out,clinical_train_out
+
+    return a_train,s_train,c_train,y_train_out 
 
 # runs every epoch
-def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize,mode):
+def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode): # clinical_train,
 
 
     while True:
         
         # these are acually lists of batches
-        a_train,s_train,c_train,y_train_out,clinical_train_out = augmentAndSplitTrain_3Dand2D(x_train,y_train,clinical_train,
+        a_train,s_train,c_train,y_train_out = augmentAndSplitTrain_3Dand2D(x_train,y_train, 
                                                                  finalSize,imgSize,count,batchSize,mode)
+
 
         # print ("final train batch data:" , a_train[0].shape,s_train[0].shape,c_train[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
         
         batches = 0
-        for   _a_train,_s_train,_c_train,_y_train,_clinical_train in zip( 
-            a_train,s_train,c_train,y_train_out,clinical_train_out ):
+        for   _a_train,_s_train,_c_train,_y_train in zip(
+            a_train,s_train,c_train,y_train_out): 
 
-            yield [_clinical_train , _a_train , _s_train , _c_train ] , _y_train   
+            yield [ _a_train , _s_train , _c_train ] , _y_train 
 
             batches += 1
             if batches ==  len(a_train) :
@@ -270,7 +273,6 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode):
     return arr_a_list,arr_s_list,arr_c_list
 
 
-    #################################################################################################################################################
 
 
 #
@@ -347,10 +349,10 @@ def augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,finalSize,imgSi
     x_train_new = np.split  (   np.array( arr_list, 'float32') [idx] [:batchProper]   , noOfBatches )
     #
     y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
-    clinical_train_out = np.split  (   clinical_train         [idx] [:batchProper]   , noOfBatches )  
 
 
-    return x_train_new,y_train_out,clinical_train_out
+
+    return x_train_new,y_train_out
 
 # runs every epoch
 def myGenerator_single3D(x_train,y_train,clinical_train,finalSize,imgSize,batchSize, skip):
@@ -359,16 +361,16 @@ def myGenerator_single3D(x_train,y_train,clinical_train,finalSize,imgSize,batchS
     while True:
         
         # these are acually lists of batches
-        x_train_out,y_train_out,clinical_train_out = augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,
+        x_train_out,y_train_out = augmentAndSplitTrain_single3D(x_train,y_train,
                                                                  finalSize,imgSize,batchSize, skip)
 
         # print ("final train batch data:" , x_train_out[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
         
         batches = 0
-        for   _x_train,_y_train,_clinical_train in zip( 
-            x_train_out,y_train_out,clinical_train_out ):
+        for   _x_train,_y_train in zip( 
+            x_train_out,y_train_out ):
 
-            yield [_clinical_train , _x_train ] , _y_train   
+            yield [ _x_train ] , _y_train   
 
             batches += 1
             if batches ==  len(x_train_out) :
