@@ -34,7 +34,7 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung2","lung1"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
+    trainList = ["lung1","lung2"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
     validateList = []
     testList = ["nsclc_rt"]
 
@@ -57,6 +57,22 @@ def manageDataFrames():
     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
     print ("train patients: " , dataFrameTrain.shape)
+
+    # now we need equal samples of 0's and 1's
+    #get numbers
+    zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
+    print ('zeros ' , zero.shape)
+    one = dataFrameTrain [  (dataFrameTrain['surv2yr']== 1.0)  ]
+    print ('ones ' , one.shape)
+    zero = zero.sample(one.shape[0],random_state=1) # RANDOM
+    #put both together
+    dataFrameTrainAdj = pd.DataFrame()
+    dataFrameTrainAdj = dataFrameTrainAdj.append(zero)
+    dataFrameTrainAdj = dataFrameTrainAdj.append(one)
+    dataFrameTrainAdj = dataFrameTrainAdj.reset_index(drop=True)
+    print ('final train size:' , dataFrameTrainAdj.shape)
+
+    #
     #
     dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
@@ -66,7 +82,7 @@ def manageDataFrames():
     dataFrameTest = dataFrameTest.reset_index(drop=True)
     print ("test patients: " , dataFrameTest.shape)
 
-    return dataFrameTrain,dataFrameValidate,dataFrameTest
+    return dataFrameTrainAdj,dataFrameValidate,dataFrameTest
 
 
 
@@ -78,7 +94,6 @@ def getXandY(dataFrame,imgSize, bool):
     # if validate or test, change if needed
     if (bool):
         augmentationFactor = valTestMultiplier
-
 
     arrList = []
     y = []
@@ -388,6 +403,12 @@ class Histories(keras.callbacks.Callback):
 
         self.train_loss = []
 
+        # save json representation
+        model_json = self.model.to_json()
+        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+            json_file.write(model_json)
+
+
         # self.auc = []
         # self.val_logits = []
         # self.val_logits_raw = []
@@ -438,13 +459,7 @@ class Histories(keras.callbacks.Callback):
 
     def on_train_end(self, logs={}):
 
-        self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
-        print("Saved model to disk")
 
-        # save model and json representation
-        model_json = self.model.to_json()
-        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
-            json_file.write(model_json)
 
 
         return
@@ -454,8 +469,13 @@ class Histories(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
 
+        if all(logs.get('loss')<i for i in self.train_loss):
+            self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+            print("Saved model to disk")
+
         self.train_loss.append(logs.get('loss'))
-        np.save( "/home/ubuntu/output/tests/" + tempFileName + "_train_loss.npy", self.train_loss) # RUN
+        np.save( "/home/ubuntu/output/tests/" + RUN + "_train_loss.npy", self.train_loss) # RUN ####################################################################################### remove tests
+
 
         # #
         # # PREDICT

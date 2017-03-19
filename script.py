@@ -15,17 +15,18 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "20"
+RUN = "21"
 print (" training : run: B " , RUN)
 mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
-nb_epoch = 200
-lr = 0.0000001 # 
+nb_epoch = 2000
+lr = 0.0001 # 
 count = 3 # for 3d mode, no i=og images to take in every direction
 finalSize = 150 # from 150 down to.. 150
 imgSize = 120 # 120
 valTestMultiplier = 1
+krs.augmentTraining = True
 
 # for single3d
 fork = True
@@ -49,7 +50,7 @@ funcs.skip = skip
 dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 #
 x_train,y_train,zeros,ones,clinical_train =  funcs.getXandY(dataFrameTrain,imgSize, False)
-print ("train data:" , x_train.shape,  y_train.shape , clinical_train.shape ) 
+print ("train data:" , x_train.shape,  y_train.shape  ) 
 #
 print ("zeros: " , zeros , "ones: " , ones)
 zeroWeight = ones / ((ones+zeros)*1.0)
@@ -58,92 +59,63 @@ print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 
 
 
-lrList = [0.1,0.01,0.001,0.0001,0.00001,0.000001,0.000005,0.0000001,0.0000005,0.00000001 ]
-boolList = [False,True]
+with tf.device('/gpu:0'):
 
-for k in iter(lrList):
+    histories = funcs.Histories()
 
-    for j in iter(boolList):
+    model = Sequential()
 
-        krs.augmentTraining = j
+    if fork:
 
-        funcs.tempFileName = str(k)+"_"+str(j)
+        if mode == "3d":
+            model_A = funcs.make3dConvModel(imgSize,count)  
+            model_S = funcs.make3dConvModel(imgSize,count)  
+            model_C = funcs.make3dConvModel(imgSize,count) 
+        elif mode == "2d":
+            model_A = funcs.make2dConvModel(imgSize)  
+            model_S = funcs.make2dConvModel(imgSize)  
+            model_C = funcs.make2dConvModel(imgSize)     
 
-        print(funcs.tempFileName)
+        # 
+        model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) # 512*3 + 3 # model_0 ,
+        model.add(Dense(512))
 
-        with tf.device('/gpu:0'):
+    else:
+         # overwrites model
+        model = funcs.makeSingle3dConvModel(imgSize, skip)
+        model.add(Dense(256))
 
-            histories = funcs.Histories()
+    
+    model.add(Dense(nb_classes))
+    model.add(Activation('softmax'))
 
-            model_0 = funcs.makeClinicalModel()
+    myOptimizer = keras.optimizers.Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    model.compile(loss='categorical_crossentropy', optimizer=myOptimizer, metrics=['accuracy'])
 
-            model = Sequential()
+    # save model
+    plot(model, show_shapes=True , show_layer_names=True,  to_file='/home/ubuntu/output/' + RUN + '_model.png')
 
+    # center and standardize - at this point its just the cubes
+    mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
+    print ( "mean and std shape: " ,mean.shape,std.shape )
 
-
-            if fork:
-
-                if mode == "3d":
-                    model_A = funcs.make3dConvModel(imgSize,count)  
-                    model_S = funcs.make3dConvModel(imgSize,count)  
-                    model_C = funcs.make3dConvModel(imgSize,count) 
-                elif mode == "2d":
-                    model_A = funcs.make2dConvModel(imgSize)  
-                    model_S = funcs.make2dConvModel(imgSize)  
-                    model_C = funcs.make2dConvModel(imgSize)     
-
-                # 
-                model.add(keras.engine.topology.Merge([   model_A, model_S, model_C  ], mode='concat', concat_axis=1)) # 512*3 + 3 # model_0 ,
-                model.add(Dense(512))
-
-            else:
-                 # overwrites model
-                model = funcs.makeSingle3dConvModel(imgSize, skip)
-                model.add(Dense(256))
-
-            
-            model.add(Dense(nb_classes))
-            model.add(Activation('softmax'))
-
-            # myOptimizer = keras.optimizers.SGD(lr=lr, momentum=0.0, decay=0.0, nesterov=False)
-            myOptimizer = keras.optimizers.Adam(lr=k, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-            # myOptimizer = keras.optimizers.RMSprop(lr=lr, rho=0.9, epsilon=1e-08, decay=0.0) 
-            # myOptimizer = keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=1e-08, decay=0.0)
-            #
-            model.compile(loss='categorical_crossentropy', optimizer=myOptimizer, metrics=['accuracy'])
-
-            # save model
-            plot(model, show_shapes=True , show_layer_names=True,  to_file='/home/ubuntu/output/' + RUN + '_model.png')
+    print ( "params: " , model.count_params() )
 
 
-            # center and standardize - at this point its just the cubes
-            mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
-            print ( "mean and std shape: " ,mean.shape,std.shape )
-
-            # pass back to funcs
-            funcs.mean = mean
-            funcs.std = std
-
-            print ( "params: " , model.count_params() )
+    if fork:
+        model.fit_generator( krs.myGenerator(x_train_cs,y_train,finalSize,imgSize,count,batch_size,mode) ,
+                    samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
+                    # class_weight={0 : zeroWeight, 1: oneWeight},
+                    nb_epoch=nb_epoch,
+                   callbacks=[histories])
 
 
-            if fork:
-
-                model.fit_generator( krs.myGenerator(x_train_cs,y_train,finalSize,imgSize,count,batch_size,mode) , # ,clinical_train
-                            samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                            class_weight={0 : zeroWeight, 1: oneWeight},
-                            nb_epoch=nb_epoch,
-                           callbacks=[histories])
-
-
-
-            else:
-
-                model.fit_generator( krs.myGenerator_single3D(x_train_cs,y_train,finalSize,imgSize,batch_size, skip) , # clinical_train,
-                            samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                            class_weight={0 : zeroWeight, 1: oneWeight},
-                            nb_epoch=nb_epoch,
-                           callbacks=[histories])
+    else:
+        model.fit_generator( krs.myGenerator_single3D(x_train_cs,y_train,finalSize,imgSize,batch_size, skip) , 
+                    samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
+                    # class_weight={0 : zeroWeight, 1: oneWeight},
+                    nb_epoch=nb_epoch,
+                   callbacks=[histories])
 
 
 

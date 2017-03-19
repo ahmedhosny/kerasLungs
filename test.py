@@ -9,7 +9,7 @@ from keras import backend as K
 
 
 #
-RUN = "17"
+RUN = "21"
 print (" testing : run: A " , RUN)
 mode = "2d"
 finalSize = 150
@@ -94,8 +94,8 @@ print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 #
 
 
-x_test,y_test,zeros,ones,clinical_test =  funcs.getXandY(dataFrameTest,imgSize, False)
-print ("train data:" , x_test.shape,  y_test.shape , clinical_test.shape ) 
+x_test,y_test,zeros,ones,clinical_test =  funcs.getXandY(dataFrameTest,imgSize, True)
+print ("test data:" , x_test.shape,  y_test.shape  ) 
 
 # center and standardize
 x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
@@ -148,14 +148,14 @@ myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 if fork:
 
     # (0 = test, 1 = train) 
-    axialFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , tf.constant(0)  ], 
+    axialFunc = K.function([ myModel.layers[0].layers[0].layers[0].input , tf.constant(0)  ], 
+                       [ myModel.layers[0].layers[0].layers[-1].output ] )
+
+    sagittalFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , tf.constant(0)  ], 
                        [ myModel.layers[0].layers[1].layers[-1].output ] )
 
-    sagittalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , tf.constant(0)  ], 
+    coronalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , tf.constant(0)  ], 
                        [ myModel.layers[0].layers[2].layers[-1].output ] )
-
-    coronalFunc = K.function([ myModel.layers[0].layers[3].layers[0].input , tf.constant(0)  ], 
-                       [ myModel.layers[0].layers[3].layers[-1].output ] )
 
     mergeFunc = K.function([ myModel.layers[1].input , tf.constant(0)  ], 
                        [ myModel.layers[2].output ] ) # 2 is before softmax, 3 is softmax
@@ -177,32 +177,38 @@ else:
 #
 #
 
-# allLabels = []
-# allLogits = []
-# rawLogits = []
+logits = []
 #
 for i in range (dataFrameTest.shape[0]):
 
     if fork:
-        # get the different ones
-        axial512 = axialFunc( [  a_train[i].reshape(1,120,120,1)  ] )
-        sagittal512 = sagittalFunc( [  s_train[i].reshape(1,120,120,1)  ] )
-        coronal512 = coronalFunc( [  c_train[i].reshape(1,120,120,1)  ] )
-        # concat them
-        concat = []
-        concat.extend ( axial512[0][0].tolist() )
-        concat.extend ( sagittal512[0][0].tolist() )
-        concat.extend ( coronal512[0][0].tolist() )
-        #
-        concat = np.array(concat ,'float32').reshape(1,len(concat))
-        # now do one last function
-        logits = mergeFunc( [concat])
-        print logits[0][0]
-    else:
-        print("no fork - not tested")
+        # get predictions
+        y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,120,120,1) , x_test_s[i].reshape(1,120,120,1) , x_test_c[i].reshape(1,120,120,1) ]  )
+        logits.append( y_pred[0] )
+
+    # if fork:
+    #     # get the different ones
+    #     axial512 = axialFunc( [  x_test_a[i].reshape(1,120,120,1)  ] )
+    #     sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,120,120,1)  ] )
+    #     coronal512 = coronalFunc( [  x_test_c[i].reshape(1,120,120,1)  ] )
+    #     # concat them
+    #     concat = []
+    #     concat.extend ( axial512[0][0].tolist() )
+    #     concat.extend ( sagittal512[0][0].tolist() )
+    #     concat.extend ( coronal512[0][0].tolist() )
+    #     #
+    #     concat = np.array(concat ,'float32').reshape(1,len(concat))
+    #     # now do one last function
+    #     logits = mergeFunc( [concat])
+    #     print logits[0][0]
+    # else:
+    #     print("no fork - not tested")
 
 
-
+logits = np.array(logits)
+print ("logits: " , logits.shape )
+auc1 , auc2 = funcs.AUC(  y_test ,  logits )
+print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
 
 
 
