@@ -15,6 +15,7 @@ from keras.layers import Convolution2D, MaxPooling2D, Convolution3D , MaxPooling
 from sklearn.metrics import roc_auc_score
 import time
 from keras import backend as K
+import random
 K.set_image_dim_ordering('tf')
 
 
@@ -35,8 +36,8 @@ K.set_image_dim_ordering('tf')
 
 def manageDataFrames():
     trainList = ["lung1","lung2"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = []
-    testList = ["nsclc_rt"]
+    validateList = [] # leave empty
+    testList = ["nsclc_rt"] # split to val and test
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -58,6 +59,9 @@ def manageDataFrames():
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
     print ("train patients: " , dataFrameTrain.shape)
 
+
+
+    ## FOR TRAINING:
     # now we need equal samples of 0's and 1's
     #get numbers
     zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
@@ -72,15 +76,59 @@ def manageDataFrames():
     dataFrameTrainAdj = dataFrameTrainAdj.reset_index(drop=True)
     print ('final train size:' , dataFrameTrainAdj.shape)
 
-    #
-    #
-    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
-    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    print ("validate patients: " , dataFrameValidate.shape)
-    #
+
+
+    #FOR VALIDATION AND TESTING.
+    # take test and split it in 30% and 70% (30% and 70% should have equal samples of 0 and 1)
     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
     dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print ("test patients: " , dataFrameTest.shape)
+    print ("validate and test patients: " , dataFrameTest.shape)
+
+    # get 30% and 70%
+    thirty = int(dataFrameTest.shape[0]*0.3)   ######################################
+    if thirty % 2 != 0:
+        thirty = thirty + 1
+    seventy = dataFrameTest.shape[0] - thirty
+
+    # get 0's and 1's.
+    zero = dataFrameTest [  (dataFrameTest['surv2yr']== 0.0)  ]
+    one = dataFrameTest [  (dataFrameTest['surv2yr']== 1.0)  ]
+
+    # split to val and test
+    half = int(thirty/2.0)
+
+    trueList = [True for i in range (half)]
+    #
+    zeroFalseList = [False for i in range (zero.shape[0] - half )]
+    zero_msk = trueList + zeroFalseList
+    random.seed(41)
+    random.shuffle(zero_msk)
+    zero_msk = np.array(zero_msk)
+    #
+    oneFalseList = [False for i in range (one.shape[0] - half )]
+    one_msk = trueList + oneFalseList
+    random.seed(41)
+    random.shuffle(one_msk)
+    one_msk = np.array(one_msk)
+
+    # VALIDATE
+    zero_val = zero[zero_msk]
+    one_val = one[one_msk]
+    dataFrameValidate = pd.DataFrame()
+    dataFrameValidate = dataFrameValidate.append(zero_val)
+    dataFrameValidate = dataFrameValidate.append(one_val)
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    print ('final validate size:' , dataFrameValidate.shape)
+
+    # TEST
+    zero_test = zero[~zero_msk]
+    one_test = one[~one_msk]
+    dataFrameTest = pd.DataFrame()
+    dataFrameTest = dataFrameTest.append(zero_test)
+    dataFrameTest = dataFrameTest.append(one_test)
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+    print ('final test size:' , dataFrameTest.shape)
+
 
     return dataFrameTrainAdj,dataFrameValidate,dataFrameTest
 
@@ -402,6 +450,8 @@ class Histories(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
 
         self.train_loss = []
+        self.auc = []
+        self.logits = []
 
         # save json representation
         model_json = self.model.to_json()
@@ -409,58 +459,37 @@ class Histories(keras.callbacks.Callback):
             json_file.write(model_json)
 
 
-        # self.auc = []
-        # self.val_logits = []
-        # self.val_logits_raw = []
-        # self.val_loss = []
-        # self.count = 2 #21 ##############################################################################################################
-        # self.reduced = 45
-
-        # dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
-        # #
-        # x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
-        # print ("validation data:" , x_val.shape,  y_val.shape , clinical_val.shape ) 
-
-        # # lets do featurewiseCenterAndStd - its still a cube at this point
-        # x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
+        #
+        x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
+        print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones , clinical_val.shape ) 
+        self.dataFrameValidate = dataFrameValidate
+        self.y_val = y_val
+        # lets do featurewiseCenterAndStd - its still a cube at this point
+        x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
 
 
-        # if fork:
-        #     # lets get the 3 orientations
-        #     x_val_a,x_val_s,x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode)
-        #     print ("final val data:" , x_val_a.shape,x_val_s.shape,x_val_c.shape)
+        if fork:
+            # lets get the 3 orientations
+            self.x_val_a,self.x_val_s,self.x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode)
+            print ("final val data:" , self.x_val_a.shape,self.x_val_s.shape,self.x_val_c.shape)
 
-        #     # now lets break them into chuncks divisible by 9 to fit into the GPU
-        #     self.y_val = getChuncks(y_val, self.count , self.reduced)
-        #     self.x_val_a = getChuncks(x_val_a, self.count , self.reduced)   
-        #     self.x_val_s = getChuncks(x_val_s, self.count , self.reduced)
-        #     self.x_val_c = getChuncks(x_val_c, self.count , self.reduced)
-        #     self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
+        else:
+            print("single cube - not tested")
+            # x_val = krs.splitValTest_single3D(x_val_cs,finalSize,imgSize,skip)
+            # print ("final val data:" , x_val.shape)
 
-        #     print ("val data chunks: " , len( self.x_val_a) )
-        #     print ("part of validate data: " , self.x_val_a[0].shape )
-        #     print ("part of validate labels: " , self.y_val[0].shape )
 
-        # else:
-        #     x_val = krs.splitValTest_single3D(x_val_cs,finalSize,imgSize,skip)
+        # save model and json representation
+        model_json = self.model.to_json()
+        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+            json_file.write(model_json)
 
-        #     print ("final val data:" , x_val.shape)
-
-        #     # now lets break them into chuncks divisible by 9 to fit into the GPU
-        #     self.y_val = getChuncks(y_val, self.count , self.reduced)
-        #     self.x_val = getChuncks(x_val, self.count , self.reduced)   
-        #     self.clinical_val = getChuncks(clinical_val, self.count , self.reduced)
-
-        #     print ("part of validate data: " , self.x_val[0].shape )
-        #     print ("part of validate labels: " , self.y_val[0].shape )
 
         return
 
 
     def on_train_end(self, logs={}):
-
-
-
 
         return
 
@@ -469,96 +498,42 @@ class Histories(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
 
-        if all(logs.get('loss')<i for i in self.train_loss):
+
+        logits = []
+
+        for i in range (self.dataFrameValidate.shape[0]):
+
+            if fork:
+                # get predictions
+                y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 
+                    self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
+                    self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
+                logits.append( y_pred[0] )
+
+
+        logits = np.array(logits)
+        print ("logits: " , logits.shape , logits[0] )
+        auc1 , auc2 = AUC(  self.y_val ,  logits )
+        print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+        print ("wtf2")
+
+
+        # # before appending, check if this auc is the highest in all the lsit
+        if all(auc1>i for i in self.auc):
             self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
             print("Saved model to disk")
 
+        # append and save train loss
         self.train_loss.append(logs.get('loss'))
-        np.save( "/home/ubuntu/output/tests/" + RUN + "_train_loss.npy", self.train_loss) # RUN ####################################################################################### remove tests
+        np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss) 
 
+        # append and save auc
+        self.auc.append(auc1)
+        np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
 
-        # #
-        # # PREDICT
-        # #
-        # allLabels = []
-        # allLogits = []
-        # validation_loss = []
-        # rawLogits = []
-        # #
-        # for i in range (self.count ):
-
-        #     if fork:
-        #         # get predictions
-        #         y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  )
-        #     else:
-        #         y_pred = self.model.predict_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  )
-
-        #     # save raw logits
-        #     rawLogits.extend( y_pred  ) 
-        #     # group by patient - to get one prediction per patient only
-        #     labelsOut,logitsOut = aggregate( self.y_val[i] , y_pred )
-        #     #
-        #     allLabels.extend(labelsOut)
-        #     allLogits.extend(logitsOut)
-        #     #
-
-        # self.val_logits_raw.append( rawLogits )
-        # np.save( "/home/ubuntu/output/" + RUN + "_validation_logits_raw.npy", self.val_logits_raw)
-
-
-        # allLabels = np.array(allLabels)
-        # allLogits = np.array(allLogits)
-
-        # # 
-        # print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape )
-
-
-        # # get 2 auc's
-        # print ("wtf1")
-        # auc1 , auc2 = AUC(  allLabels ,  allLogits )
-        # print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
-        # # before appending, check if this auc is the highest in all the lsit
-
-        # if all(auc1>i for i in self.auc):
-
-        #     self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
-        #     print("Saved model to disk")
-
-        #     # save model and json representation
-        #     model_json = self.model.to_json()
-        #     with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
-        #         json_file.write(model_json)
-
-
-        # self.auc.append(auc1)
-        # print ("wtf2")
-
-
-        # self.val_logits.append(allLogits)
-        
-        
-
-        # overwrite every time - no problem
-        # save stuff
-        # np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
-        # np.save( "/home/ubuntu/output/" + RUN + "_validation_logits.npy", self.val_logits)
-
-
-
-        # # validate loss
-        # #
-        # for i in range (self.count ):
-        #     # now do loss
-
-        #     if fork:
-        #         temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val_a[i] , self.x_val_s[i] , self.x_val_c[i] ]  , self.y_val[i] )
-        #     else:
-        #         temp = self.model.test_on_batch ( [ self.clinical_val[i] , self.x_val[i] ]  , self.y_val[i] )
-
-        #     validation_loss.append ( temp )
-        # validation_loss_avg = np.mean(validation_loss)
-        # self.val_loss.append(validation_loss_avg)
-        # np.save( "/home/ubuntu/output/" + RUN + "_validation_loss.npy", self.val_loss)
+        # append and save logits
+        self.logits.append(logits)
+        np.save( "/home/ubuntu/output/" + RUN + "_logits.npy", self.logits)
          
         return
 

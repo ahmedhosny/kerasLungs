@@ -15,7 +15,7 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "21"
+RUN = "22"
 print (" training : run: B " , RUN)
 mode = "2d"
 batch_size = 64 # # 64 # 128
@@ -48,6 +48,9 @@ funcs.skip = skip
 
 
 dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+
+
+
 #
 x_train,y_train,zeros,ones,clinical_train =  funcs.getXandY(dataFrameTrain,imgSize, False)
 print ("train data:" , x_train.shape,  y_train.shape  ) 
@@ -97,6 +100,8 @@ with tf.device('/gpu:0'):
 
     # center and standardize - at this point its just the cubes
     mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
+    funcs.mean = mean
+    funcs.std = std
     print ( "mean and std shape: " ,mean.shape,std.shape )
 
     print ( "params: " , model.count_params() )
