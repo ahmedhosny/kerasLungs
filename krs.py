@@ -5,6 +5,7 @@ import numpy as np
 import scipy.ndimage as ndi
 import random 
 from keras.utils import np_utils
+import scipy.misc
 
 #
 #
@@ -95,15 +96,15 @@ def applyRotation(arr,theta):
 
 #
 #
-#              `7MM"""Yb.
-#                MM    `Yb.
-#      pd""b.    MM     `Mb
-#     (O)  `8b   MM      MM
-#          ,89   MM     ,MP
-#        ""Yb.   MM    ,dP'
-#           88 .JMMmmmdP'
-#     (O)  .M'
-#      bmmmd'
+#              `7MM"""Yb.        ,gM""bg                  `7MM"""Yb.
+#                MM    `Yb.      8MI  ,8                    MM    `Yb.
+#      pd*"*b.   MM     `Mb       WMp,"           pd""b.    MM     `Mb
+#     (O)   j8   MM      MM      ,gPMN.  jM"'    (O)  `8b   MM      MM
+#         ,;j9   MM     ,MP     ,M.  YMp.M'           ,89   MM     ,MP
+#      ,-='      MM    ,dP'     8Mp   ,MMp          ""Yb.   MM    ,dP'
+#     Ammmmmmm .JMMmmmdP'       `YMbmm'``MMm.          88 .JMMmmmdP'
+#                                                (O)  .M'
+#                                                 bmmmd'
 
 # augments, randmoizes and splits into batches.
 def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchSize, mode): # clinical_train,
@@ -113,6 +114,7 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchS
     arr_s_list = []
     arr_c_list = []
 
+    counter = 0
     # loop through each patient.
     for arr in iter(x_train):
 
@@ -146,7 +148,7 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchS
             # rotation
             angleList = [-180,-90,0,90,180]
             randAng = angleList [ random.randint(0,4) ]
-            theta = np.pi / 180 * randAng # np.random.uniform(-180, 180)
+            theta = np.pi / 180 * randAng # np.random.uniform(-180, 180) # 
             #
             miniPatch = applyRotation(miniPatch,theta) 
 
@@ -174,6 +176,11 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchS
             arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
             arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
 
+            
+            # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter) + "_A.png" , miniPatch [mid,:,:].reshape(imgSize,imgSize) )
+            # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+1) + "_S.png" , np.flipud ( miniPatch [:,:,mid] ).reshape(imgSize,imgSize) )
+            # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+2) + "_C.png" , np.flipud ( miniPatch [:,mid,:] ).reshape(imgSize,imgSize) )
+            # counter = counter+3
         
     # AFTER LOOP
     # RANDOMIZE

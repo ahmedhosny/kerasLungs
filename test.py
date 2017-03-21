@@ -9,7 +9,7 @@ from keras import backend as K
 
 
 #
-RUN = "21"
+RUN = "24"
 print (" testing : run: A " , RUN)
 mode = "2d"
 finalSize = 150
@@ -58,7 +58,7 @@ skip = 3 # if fork false: imgSize/skip should be int
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames("2yr")
 
 #
 #
@@ -200,7 +200,7 @@ for i in range (dataFrameTest.shape[0]):
     #     concat = np.array(concat ,'float32').reshape(1,len(concat))
     #     # now do one last function
     #     logits = mergeFunc( [concat])
-    #     print logits[0][0]
+    #     print (logits[0][0])
     # else:
     #     print("no fork - not tested")
 

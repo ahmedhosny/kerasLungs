@@ -16,6 +16,8 @@ from sklearn.metrics import roc_auc_score
 import time
 from keras import backend as K
 import random
+import tensorflow as tf
+from tensorflow.python.ops import nn
 K.set_image_dim_ordering('tf')
 
 
@@ -34,56 +36,83 @@ K.set_image_dim_ordering('tf')
 #
 #
 
-def manageDataFrames():
+def manageDataFrames(keyword):
     trainList = ["lung1","lung2"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
     validateList = [] # leave empty
     testList = ["nsclc_rt"] # split to val and test
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
-    ( pd.notnull( dataFrame["pathToData"] ) ) &
-    ( pd.notnull( dataFrame["pathToMask"] ) ) &
-    ( pd.notnull( dataFrame["stackMin"] ) ) &
-    ( pd.notnull( dataFrame["histology"] ) ) & 
-    ( pd.notnull( dataFrame["surv2yr"] ) ) &
-    ( pd.notnull( dataFrame["surv1yr"] ) ) & 
-    ( pd.notnull( dataFrame["stage"] ) ) &
-    ( pd.notnull( dataFrame["age"] ) ) &
-    ( pd.isnull( dataFrame["patch_failed"] ) )
-    # & ( dataFrame["stage"] == 3.0 ) 
-    ]
+        ( pd.notnull( dataFrame["pathToData"] ) ) &
+        ( pd.notnull( dataFrame["pathToMask"] ) ) &
+        ( pd.notnull( dataFrame["stackMin"] ) ) &
+        ( pd.isnull( dataFrame["patch_failed"] ) ) &
+        ( pd.notnull( dataFrame["surv1yr"] ) )  &
+        ( pd.notnull( dataFrame["surv2yr"] ) )  &
+        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+        ( pd.notnull( dataFrame["stage"] ) )  &
+        ( pd.notnull( dataFrame["age"] ) )  
+        ]
+   
+    dataFrame = dataFrame.reset_index(drop=True)
+    
+    ###### FIX ALL
+    
+    #1# clean histology - remove smallcell and other
+    # histToInclude - only NSCLC
+    histToInclude = [1.0,2.0,3.0,4.0]
+    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
     dataFrame = dataFrame.reset_index(drop=True)
     print ("all patients: " , dataFrame.shape)
-    #
+    
+    #2# use all stages for now.
+        
+    ###### GET TRAINING / TESTING
+
     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    print ("train patients: " , dataFrameTrain.shape)
+    print (" final - train patients: " , dataFrameTrain.shape)
+    
+    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+    print (" before - test patients : " , dataFrameTest.shape)
+    
+    ###### FIX val/TESTING
+    
+    #3# type of treatment - use only radio or chemoRadio - use .npy file
+    
+    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+    dataFrameTest = dataFrameTest [ dataFrameTest["patient"].isin(chemoRadio) ]
+   
+    #4# (rt only) use all causes of death
+        
+    #FOR VALIDATION AND TESTING.
+    # take test and split it in 30% and 70% (30% and 70% should have equal samples of 0 and 1)
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+    print ("validate and test patients " , dataFrameTest.shape)
 
 
 
     ## FOR TRAINING:
     # now we need equal samples of 0's and 1's
-    #get numbers
-    zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
-    print ('zeros ' , zero.shape)
-    one = dataFrameTrain [  (dataFrameTrain['surv2yr']== 1.0)  ]
-    print ('ones ' , one.shape)
-    zero = zero.sample(one.shape[0],random_state=1) # RANDOM
-    #put both together
-    dataFrameTrainAdj = pd.DataFrame()
-    dataFrameTrainAdj = dataFrameTrainAdj.append(zero)
-    dataFrameTrainAdj = dataFrameTrainAdj.append(one)
-    dataFrameTrainAdj = dataFrameTrainAdj.reset_index(drop=True)
-    print ('final train size:' , dataFrameTrainAdj.shape)
+    # get numbers
+    # zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
+    # print ('zeros ' , zero.shape)
+    # one = dataFrameTrain [  (dataFrameTrain['surv2yr']== 1.0)  ]
+    # print ('ones ' , one.shape)
+    # zero = zero.sample(one.shape[0],random_state=1) # RANDOM
+    # #put both together
+    # dataFrameTrain = pd.DataFrame()
+    # dataFrameTrain = dataFrameTrain.append(zero)
+    # dataFrameTrain = dataFrameTrain.append(one)
+    # dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+    # print ('final train size:' , dataFrameTrain.shape)
 
 
 
-    #FOR VALIDATION AND TESTING.
+
     # take test and split it in 30% and 70% (30% and 70% should have equal samples of 0 and 1)
-    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
-    dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print ("validate and test patients: " , dataFrameTest.shape)
-
     # get 30% and 70%
     thirty = int(dataFrameTest.shape[0]*0.3)   ######################################
     if thirty % 2 != 0:
@@ -130,7 +159,7 @@ def manageDataFrames():
     print ('final test size:' , dataFrameTest.shape)
 
 
-    return dataFrameTrainAdj,dataFrameValidate,dataFrameTest
+    return dataFrameTrain,dataFrameValidate,dataFrameTest
 
 
 
@@ -432,19 +461,6 @@ def AUC(test_labels,test_prediction):
 
     return round(roc_auc[0],3) , round(roc_auc[1],3)
 
-# returns a list of divided chuncks from the given param
-# reduced must be divisible by 9
-def getChuncks(inputa, count, reduced):
-
-    output = []
-
-    # will handle all but last one
-    for i in range (count-1):
-        output.append( inputa [ reduced*i : reduced*(i+1) ] ) 
-    # will handle last one
-    output.append( inputa [ reduced*(count-1) : ] ) 
-
-    return output
 
 class Histories(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
@@ -459,7 +475,7 @@ class Histories(keras.callbacks.Callback):
             json_file.write(model_json)
 
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames("2yr")
         #
         x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
         print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones , clinical_val.shape ) 
@@ -480,12 +496,6 @@ class Histories(keras.callbacks.Callback):
             # print ("final val data:" , x_val.shape)
 
 
-        # save model and json representation
-        model_json = self.model.to_json()
-        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
-            json_file.write(model_json)
-
-
         return
 
 
@@ -499,29 +509,101 @@ class Histories(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
 
 
+        if fork:
+
+            # (0 = test, 1 = train) 
+            axialFunc = K.function([ self.model.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
+                               [ self.model.layers[0].layers[0].layers[-1].output ] )
+
+            sagittalFunc = K.function([ self.model.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
+                               [ self.model.layers[0].layers[1].layers[-1].output ] )
+
+            coronalFunc = K.function([ self.model.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
+                               [ self.model.layers[0].layers[2].layers[-1].output ] )
+
+            mergeFunc = K.function([ self.model.layers[1].input , K.learning_phase()  ], 
+                               [ self.model.layers[2].output ] ) 
+
+            softmaxFunc = K.function([ self.model.layers[3].input , K.learning_phase()  ], 
+                               [ self.model.layers[3].output ] )
+
+        else:
+
+            print("no fork - not tested")
+
+
         logits = []
 
         for i in range (self.dataFrameValidate.shape[0]):
 
             if fork:
-                # get predictions
-                y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 
-                    self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
-                    self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
-                logits.append( y_pred[0] )
+
+            #
+            #
+            #     `7MM"""Mq.`7MM"""Mq.  `7MM"""YMM  `7MM"""Yb. `7MMF' .g8"""bgd MMP""MM""YMM
+            #       MM   `MM. MM   `MM.   MM    `7    MM    `Yb. MM .dP'     `M P'   MM   `7
+            #       MM   ,M9  MM   ,M9    MM   d      MM     `Mb MM dM'       `      MM
+            #       MMmmdM9   MMmmdM9     MMmmMM      MM      MM MM MM               MM
+            #       MM        MM  YM.     MM   Y  ,   MM     ,MP MM MM.              MM
+            #       MM        MM   `Mb.   MM     ,M   MM    ,dP' MM `Mb.     ,'      MM
+            #     .JMML.    .JMML. .JMM..JMMmmmmMMM .JMMmmmdP' .JMML. `"bmmmd'     .JMML.
+            #
+            #
+
+                # # get predictions
+                # y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 
+                #     self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
+                #     self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
+                # logits.append( y_pred[0] )
+
+
+            #
+            #
+            #     `7MM"""Yb. `7MM"""YMM  `7MN.   `7MF'.M"""bgd `7MM"""YMM
+            #       MM    `Yb. MM    `7    MMN.    M ,MI    "Y   MM    `7
+            #       MM     `Mb MM   d      M YMb   M `MMb.       MM   d     pd*"*b.
+            #       MM      MM MMmmMM      M  `MN. M   `YMMNq.   MMmmMM    (O)   j8
+            #       MM     ,MP MM   Y  ,   M   `MM.M .     `MM   MM   Y  ,     ,;j9
+            #       MM    ,dP' MM     ,M   M     YMM Mb     dM   MM     ,M  ,-='
+            #     .JMMmmmdP' .JMMmmmmMMM .JML.    YM P"Ybmmd"  .JMMmmmmMMM Ammmmmmm
+            #
+            #
+
+                # get the different ones
+                axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                # concat them
+                concat = []
+                concat.extend ( axial512[0][0].tolist() )
+                concat.extend ( sagittal512[0][0].tolist() )
+                concat.extend ( coronal512[0][0].tolist() )
+                #
+                concat = np.array(concat ,'float32').reshape(1,len(concat))
+                # now do one last function
+                preds = mergeFunc( [ concat , 0 ])
+                #
+                logitsBal = np.array( [ preds[0][0][0] * zeroWeight ,  preds[0][0][1] * oneWeight ]  ) .reshape(1,2)
+                logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+
+            else:
+                print("no fork - not tested")
 
 
         logits = np.array(logits)
-        print ("logits: " , logits.shape , logits[0] )
+        print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
         auc1 , auc2 = AUC(  self.y_val ,  logits )
         print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
         print ("wtf2")
-
 
         # # before appending, check if this auc is the highest in all the lsit
         if all(auc1>i for i in self.auc):
             self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
             print("Saved model to disk")
+            # save model and json representation
+            model_json = self.model.to_json()
+            with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+                json_file.write(model_json)
 
         # append and save train loss
         self.train_loss.append(logs.get('loss'))

@@ -15,13 +15,13 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "22"
-print (" training : run: B " , RUN)
+RUN = "25"
+print (" training : run: A " , RUN)
 mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 2000
-lr = 0.0001 # 
+lr = 0.0001 #  no: 0.01, 0.001
 count = 3 # for 3d mode, no i=og images to take in every direction
 finalSize = 150 # from 150 down to.. 150
 imgSize = 120 # 120
@@ -47,7 +47,7 @@ funcs.fork = fork
 funcs.skip = skip
 
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames("2yr")
 
 
 
@@ -59,7 +59,8 @@ print ("zeros: " , zeros , "ones: " , ones)
 zeroWeight = ones / ((ones+zeros)*1.0)
 oneWeight = zeros / ((ones+zeros)*1.0)
 print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
-
+funcs.zeroWeight = zeroWeight
+funcs.oneWeight = oneWeight
 
 
 with tf.device('/gpu:0'):
@@ -110,7 +111,7 @@ with tf.device('/gpu:0'):
     if fork:
         model.fit_generator( krs.myGenerator(x_train_cs,y_train,finalSize,imgSize,count,batch_size,mode) ,
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                    # class_weight={0 : zeroWeight, 1: oneWeight},
+                    class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
 
@@ -118,7 +119,7 @@ with tf.device('/gpu:0'):
     else:
         model.fit_generator( krs.myGenerator_single3D(x_train_cs,y_train,finalSize,imgSize,batch_size, skip) , 
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
-                    # class_weight={0 : zeroWeight, 1: oneWeight},
+                    class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
 
