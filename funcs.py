@@ -36,7 +36,7 @@ K.set_image_dim_ordering('tf')
 #
 #
 
-def manageDataFrames(keyword):
+def manageDataFrames():
     trainList = ["lung1","lung2"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
     validateList = [] # leave empty
     testList = ["nsclc_rt"] # split to val and test
@@ -64,9 +64,14 @@ def manageDataFrames(keyword):
     # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
     dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
     dataFrame = dataFrame.reset_index(drop=True)
-    print ("all patients: " , dataFrame.shape)
+
     
     #2# use all stages for now.
+    stageToInclude = [1.0,2.0,3.0]
+    dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+    print ("all patients: " , dataFrame.shape)
+
         
     ###### GET TRAINING / TESTING
 
@@ -282,7 +287,7 @@ def make3dConvModel(imgSize,count):
 
     model.add(Convolution3D(96, 1, 5 , 5)) # 64
     model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(MaxPooling3D(pool_size=(2, 3, 3)))
     model.add(Dropout(0.25))
 
 
@@ -475,7 +480,7 @@ class Histories(keras.callbacks.Callback):
             json_file.write(model_json)
 
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames("2yr")
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
         #
         x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
         print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones , clinical_val.shape ) 
@@ -568,11 +573,16 @@ class Histories(keras.callbacks.Callback):
             #     .JMMmmmdP' .JMMmmmmMMM .JML.    YM P"Ybmmd"  .JMMmmmmMMM Ammmmmmm
             #
             #
+                if mode == "2d":
+                    # get the different ones
+                    axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                    sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                    coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                if mode == "3d":
+                    axial512 = axialFunc( [  self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+                    sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+                    coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
 
-                # get the different ones
-                axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
                 # concat them
                 concat = []
                 concat.extend ( axial512[0][0].tolist() )

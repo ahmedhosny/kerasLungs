@@ -9,13 +9,13 @@ from keras import backend as K
 
 
 #
-RUN = "24"
+RUN = "26"
 print (" testing : run: A " , RUN)
-mode = "2d"
-finalSize = 150
-imgSize = 120
+mode = "3d"
+finalSize = 130
+imgSize = 100
 fork = True
-count = 200 # only if mode 3d and fork=True
+count = 2 # only if mode 3d and fork=True
 funcs.valTestMultiplier = 1
 # 
 skip = 3 # if fork false: imgSize/skip should be int
@@ -58,7 +58,7 @@ skip = 3 # if fork false: imgSize/skip should be int
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames("2yr")
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 #
 #
@@ -148,17 +148,21 @@ myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 if fork:
 
     # (0 = test, 1 = train) 
-    axialFunc = K.function([ myModel.layers[0].layers[0].layers[0].input , tf.constant(0)  ], 
+    axialFunc = K.function([ myModel.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
                        [ myModel.layers[0].layers[0].layers[-1].output ] )
 
-    sagittalFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , tf.constant(0)  ], 
+    sagittalFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
                        [ myModel.layers[0].layers[1].layers[-1].output ] )
 
-    coronalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , tf.constant(0)  ], 
+    coronalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
                        [ myModel.layers[0].layers[2].layers[-1].output ] )
 
-    mergeFunc = K.function([ myModel.layers[1].input , tf.constant(0)  ], 
-                       [ myModel.layers[2].output ] ) # 2 is before softmax, 3 is softmax
+    mergeFunc = K.function([ myModel.layers[1].input , K.learning_phase()  ], 
+                       [ myModel.layers[2].output ] ) 
+
+    softmaxFunc = K.function([ myModel.layers[3].input , K.learning_phase()  ], 
+                       [ myModel.layers[3].output ] )
+
 
 else:
 
@@ -181,35 +185,47 @@ logits = []
 #
 for i in range (dataFrameTest.shape[0]):
 
-    if fork:
-        # get predictions
-        y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,120,120,1) , x_test_s[i].reshape(1,120,120,1) , x_test_c[i].reshape(1,120,120,1) ]  )
-        logits.append( y_pred[0] )
 
-    # if fork:
-    #     # get the different ones
-    #     axial512 = axialFunc( [  x_test_a[i].reshape(1,120,120,1)  ] )
-    #     sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,120,120,1)  ] )
-    #     coronal512 = coronalFunc( [  x_test_c[i].reshape(1,120,120,1)  ] )
-    #     # concat them
-    #     concat = []
-    #     concat.extend ( axial512[0][0].tolist() )
-    #     concat.extend ( sagittal512[0][0].tolist() )
-    #     concat.extend ( coronal512[0][0].tolist() )
-    #     #
-    #     concat = np.array(concat ,'float32').reshape(1,len(concat))
-    #     # now do one last function
-    #     logits = mergeFunc( [concat])
-    #     print (logits[0][0])
-    # else:
-    #     print("no fork - not tested")
+    if fork:
+
+        if mode == "2d":
+            # get the different ones
+            axial512 = axialFunc( [  x_test_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+            sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+            coronal512 = coronalFunc( [  x_test_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+        if mode == "3d":
+            axial512 = axialFunc( [  x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+            sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+            coronal512 = coronalFunc( [  x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+
+        # concat them
+        concat = []
+        concat.extend ( axial512[0][0].tolist() )
+        concat.extend ( sagittal512[0][0].tolist() )
+        concat.extend ( coronal512[0][0].tolist() )
+        #
+        concat = np.array(concat ,'float32').reshape(1,len(concat))
+        # now do one last function
+        preds = mergeFunc( [ concat , 0 ])
+        print (   preds[0][0][0] ,  preds[0][0][1]   )
+        #
+        logitsBal = np.array( [ preds[0][0][0] * zeroWeight ,  preds[0][0][1] * oneWeight ]  ) .reshape(1,2)
+        logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+
+    else:
+
+        print("no fork - not tested")
 
 
 logits = np.array(logits)
-print ("logits: " , logits.shape )
+print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
 auc1 , auc2 = funcs.AUC(  y_test ,  logits )
 print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+print ("wtf2")
 
+
+
+##############################################################################################################################################
 
 
 

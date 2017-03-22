@@ -15,16 +15,16 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "25"
+RUN = "26"
 print (" training : run: A " , RUN)
-mode = "2d"
+mode = "3d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 2000
-lr = 0.0001 #  no: 0.01, 0.001
-count = 3 # for 3d mode, no i=og images to take in every direction
-finalSize = 150 # from 150 down to.. 150
-imgSize = 120 # 120
+lr = 0.00001 #  no: 0.01, 0.001
+count = 2 # for 3d mode, # of images to take in every direction
+finalSize = 130 # from 150 down to.. 150
+imgSize = 100 # 120
 valTestMultiplier = 1
 krs.augmentTraining = True
 
@@ -47,7 +47,7 @@ funcs.fork = fork
 funcs.skip = skip
 
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames("2yr")
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 
 

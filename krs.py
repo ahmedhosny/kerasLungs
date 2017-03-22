@@ -148,7 +148,7 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchS
             # rotation
             angleList = [-180,-90,0,90,180]
             randAng = angleList [ random.randint(0,4) ]
-            theta = np.pi / 180 * randAng # np.random.uniform(-180, 180) # 
+            theta = np.pi / 180 *  np.random.uniform(-180, 180) # randAng #
             #
             miniPatch = applyRotation(miniPatch,theta) 
 
