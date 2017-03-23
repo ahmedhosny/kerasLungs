@@ -15,18 +15,18 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "26"
-print (" training : run: A " , RUN)
-mode = "3d"
+RUN = "27"
+print (" training : run: K " , RUN)
+mode = "2d"
 batch_size = 64 # # 64 # 128
 nb_classes = 2
 nb_epoch = 2000
-lr = 0.00001 #  no: 0.01, 0.001
+lr = 0.0001 #  no: 0.01, 0.001
 count = 2 # for 3d mode, # of images to take in every direction
-finalSize = 130 # from 150 down to.. 150
-imgSize = 100 # 120
+finalSize = 110 # from 150 down to.. 150
+imgSize = 80 # 120
 valTestMultiplier = 1
-krs.augmentTraining = True
+krs.augmentTraining = False
 
 # for single3d
 fork = True

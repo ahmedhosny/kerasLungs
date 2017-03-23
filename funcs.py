@@ -37,9 +37,9 @@ K.set_image_dim_ordering('tf')
 #
 
 def manageDataFrames():
-    trainList = ["lung1","lung2"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = [] # leave empty
-    testList = ["nsclc_rt"] # split to val and test
+    trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
+    validateList = ["lung1"] # leave empty
+    testList = ["lung2"] # split to val and test
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -47,11 +47,11 @@ def manageDataFrames():
         ( pd.notnull( dataFrame["pathToMask"] ) ) &
         ( pd.notnull( dataFrame["stackMin"] ) ) &
         ( pd.isnull( dataFrame["patch_failed"] ) ) &
-        ( pd.notnull( dataFrame["surv1yr"] ) )  &
+        # ( pd.notnull( dataFrame["surv1yr"] ) )  &
         ( pd.notnull( dataFrame["surv2yr"] ) )  &
         ( pd.notnull( dataFrame["histology_grouped"] ) )  &
-        ( pd.notnull( dataFrame["stage"] ) )  &
-        ( pd.notnull( dataFrame["age"] ) )  
+        ( pd.notnull( dataFrame["stage"] ) ) 
+        # ( pd.notnull( dataFrame["age"] ) )  
         ]
    
     dataFrame = dataFrame.reset_index(drop=True)
@@ -73,96 +73,25 @@ def manageDataFrames():
     print ("all patients: " , dataFrame.shape)
 
         
-    ###### GET TRAINING / TESTING
+    ###### GET TRAINING / VALIDATION / TESTING
 
     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+    #3# type of treatment - use only radio or chemoRadio - use .npy file
+    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+    dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+    #4# (rt only) use all causes of death
+    # not implemented
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    print (" final - train patients: " , dataFrameTrain.shape)
-    
+    print ("final - train patients " , dataFrameTrain.shape)
+
+    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    print (" final - validate patients : " , dataFrameValidate.shape)
+
     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
     dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print (" before - test patients : " , dataFrameTest.shape)
+    print (" final - test patients : " , dataFrameTest.shape)
     
-    ###### FIX val/TESTING
-    
-    #3# type of treatment - use only radio or chemoRadio - use .npy file
-    
-    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
-    dataFrameTest = dataFrameTest [ dataFrameTest["patient"].isin(chemoRadio) ]
-   
-    #4# (rt only) use all causes of death
-        
-    #FOR VALIDATION AND TESTING.
-    # take test and split it in 30% and 70% (30% and 70% should have equal samples of 0 and 1)
-    dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print ("validate and test patients " , dataFrameTest.shape)
-
-
-
-    ## FOR TRAINING:
-    # now we need equal samples of 0's and 1's
-    # get numbers
-    # zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
-    # print ('zeros ' , zero.shape)
-    # one = dataFrameTrain [  (dataFrameTrain['surv2yr']== 1.0)  ]
-    # print ('ones ' , one.shape)
-    # zero = zero.sample(one.shape[0],random_state=1) # RANDOM
-    # #put both together
-    # dataFrameTrain = pd.DataFrame()
-    # dataFrameTrain = dataFrameTrain.append(zero)
-    # dataFrameTrain = dataFrameTrain.append(one)
-    # dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    # print ('final train size:' , dataFrameTrain.shape)
-
-
-
-
-    # take test and split it in 30% and 70% (30% and 70% should have equal samples of 0 and 1)
-    # get 30% and 70%
-    thirty = int(dataFrameTest.shape[0]*0.3)   ######################################
-    if thirty % 2 != 0:
-        thirty = thirty + 1
-    seventy = dataFrameTest.shape[0] - thirty
-
-    # get 0's and 1's.
-    zero = dataFrameTest [  (dataFrameTest['surv2yr']== 0.0)  ]
-    one = dataFrameTest [  (dataFrameTest['surv2yr']== 1.0)  ]
-
-    # split to val and test
-    half = int(thirty/2.0)
-
-    trueList = [True for i in range (half)]
-    #
-    zeroFalseList = [False for i in range (zero.shape[0] - half )]
-    zero_msk = trueList + zeroFalseList
-    random.seed(41)
-    random.shuffle(zero_msk)
-    zero_msk = np.array(zero_msk)
-    #
-    oneFalseList = [False for i in range (one.shape[0] - half )]
-    one_msk = trueList + oneFalseList
-    random.seed(41)
-    random.shuffle(one_msk)
-    one_msk = np.array(one_msk)
-
-    # VALIDATE
-    zero_val = zero[zero_msk]
-    one_val = one[one_msk]
-    dataFrameValidate = pd.DataFrame()
-    dataFrameValidate = dataFrameValidate.append(zero_val)
-    dataFrameValidate = dataFrameValidate.append(one_val)
-    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    print ('final validate size:' , dataFrameValidate.shape)
-
-    # TEST
-    zero_test = zero[~zero_msk]
-    one_test = one[~one_msk]
-    dataFrameTest = pd.DataFrame()
-    dataFrameTest = dataFrameTest.append(zero_test)
-    dataFrameTest = dataFrameTest.append(one_test)
-    dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print ('final test size:' , dataFrameTest.shape)
-
 
     return dataFrameTrain,dataFrameValidate,dataFrameTest
 
