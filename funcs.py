@@ -66,14 +66,14 @@ def manageDataFrames():
     dataFrame = dataFrame.reset_index(drop=True)
 
     
-    #2# use all stages for now.
+    #2# use 1,2,3 stages
     stageToInclude = [1.0,2.0,3.0]
     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
     dataFrame = dataFrame.reset_index(drop=True)
     print ("all patients: " , dataFrame.shape)
 
         
-    ###### GET TRAINING / VALIDATION / TESTING
+    ###### GET TRAINING / VALIDATION 
 
     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
     #3# type of treatment - use only radio or chemoRadio - use .npy file
@@ -82,15 +82,73 @@ def manageDataFrames():
     #4# (rt only) use all causes of death
     # not implemented
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    print ("final - train patients " , dataFrameTrain.shape)
+    print ("train patients " , dataFrameTrain.shape)
 
     dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    print (" final - validate patients : " , dataFrameValidate.shape)
+    print ("validate patients : " , dataFrameValidate.shape)
 
+
+    #
+    # now combine train and val , then split them.
+    dataFrameTrainValidate = pd.concat([dataFrameTrain,dataFrameValidate] , ignore_index=False )
+    dataFrameTrainValidate = dataFrameTrainValidate.sample( frac=1 , random_state = 42 )
+    dataFrameTrainValidate = dataFrameTrainValidate.reset_index(drop=True)
+    print ("final - train and validate patients : " , dataFrameTrainValidate.shape)
+
+
+    thirty = int(dataFrameTrainValidate.shape[0]*0.1)   ######################################
+    if thirty % 2 != 0:
+        thirty = thirty + 1
+
+    # get 0's and 1's.
+    zero = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 0.0)  ]
+    one = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 1.0)  ]
+
+    # split to train and val
+    half = int(thirty/2.0)
+
+    trueList = [True for i in range (half)]
+    #
+    zeroFalseList = [False for i in range (zero.shape[0] - half )]
+    zero_msk = trueList + zeroFalseList
+    random.seed(41)
+    random.shuffle(zero_msk)
+    zero_msk = np.array(zero_msk)
+    #
+    oneFalseList = [False for i in range (one.shape[0] - half )]
+    one_msk = trueList + oneFalseList
+    random.seed(41)
+    random.shuffle(one_msk)
+    one_msk = np.array(one_msk)
+
+
+    # TRAIN
+    zero_test = zero[~zero_msk]
+    one_test = one[~one_msk]
+    dataFrameTrain = pd.DataFrame()
+    dataFrameTrain = dataFrameTrain.append(zero_test)
+    dataFrameTrain = dataFrameTrain.append(one_test)
+    dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 42 )
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+    print ('final - train size:' , dataFrameTrain.shape)
+
+
+    # VALIDATE
+    zero_val = zero[zero_msk]
+    one_val = one[one_msk]
+    dataFrameValidate = pd.DataFrame()
+    dataFrameValidate = dataFrameValidate.append(zero_val)
+    dataFrameValidate = dataFrameValidate.append(one_val)
+    dataFrameValidate = dataFrameValidate.sample( frac=1 , random_state = 42 )
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    print ('final - validate size:' , dataFrameValidate.shape)
+
+
+    # TEST
     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
     dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print (" final - test patients : " , dataFrameTest.shape)
+    print ("final - test size : " , dataFrameTest.shape)
     
 
     return dataFrameTrain,dataFrameValidate,dataFrameTest
@@ -165,35 +223,65 @@ def makeClinicalModel():
 
 def make2dConvModel(imgSize):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
-    
+
     model = Sequential()
 
-    model.add(Convolution2D(48, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
+    model.add(Convolution2D(32, 7, 7, border_mode='valid',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(48, 5, 5)) # 32
+    model.add(Convolution2D(64, 5, 5 , border_mode='valid' )) # 32
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
 
-    model.add(Convolution2D(96, 5, 5, border_mode='same')) # 64
+    model.add(Convolution2D(128, 3, 3, border_mode='valid')) # 64
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(96, 5, 5)) # 64
+    model.add(Convolution2D(128, 3, 3,  border_mode='valid')) # 64
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
 
-    # this chucnk added - 14
-    model.add(Convolution2D(192, 5, 5)) # 64
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
+    # # this chucnk added - 14
+    # model.add(Convolution2D(256, 3, 3)) # 64
+    # model.add(Activation('tanh'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.5))
 
     model.add(Flatten())
     model.add(Dense(512)) # 512
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
+
+
+    # model = Sequential()
+
+    # model.add(Convolution2D(32, 11, 11, border_mode='same',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
+    # model.add(Activation('tanh'))
+
+    # model.add(Convolution2D(64, 9, 9)) # 32
+    # model.add(Activation('tanh'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.5))
+
+    # model.add(Convolution2D(128, 7, 7, border_mode='same')) # 64
+    # model.add(Activation('tanh'))
+
+    # model.add(Convolution2D(96, 5, 5)) # 64
+    # model.add(Activation('tanh'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.5))
+
+    # # this chucnk added - 14
+    # model.add(Convolution2D(256, 3, 3)) # 64
+    # model.add(Activation('tanh'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.5))
+
+    # model.add(Flatten())
+    # model.add(Dense(512)) # 512
+    # model.add(Activation('tanh'))
+    # model.add(Dropout(0.5))
     
     return model
 
@@ -482,13 +570,21 @@ class Histories(keras.callbacks.Callback):
             #       MM        MM   `Mb.   MM     ,M   MM    ,dP' MM `Mb.     ,'      MM
             #     .JMML.    .JMML. .JMM..JMMmmmmMMM .JMMmmmdP' .JMML. `"bmmmd'     .JMML.
             #
-            #
+            #   
+                if mode == "2d":
+                    # get predictions
+                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 
+                        self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
+                        self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
+                    logits.append( y_pred[0] )
 
-                # # get predictions
-                # y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 
-                #     self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
-                #     self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
-                # logits.append( y_pred[0] )
+                if mode == "3d":
+                    # get predictions
+                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                        self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                        self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
+                    logits.append( y_pred[0] )
+
 
 
             #
@@ -502,35 +598,39 @@ class Histories(keras.callbacks.Callback):
             #     .JMMmmmdP' .JMMmmmmMMM .JML.    YM P"Ybmmd"  .JMMmmmmMMM Ammmmmmm
             #
             #
-                if mode == "2d":
-                    # get the different ones
-                    axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                    sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                    coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                if mode == "3d":
-                    axial512 = axialFunc( [  self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-                    sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-                    coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+                # if mode == "2d":
+                #     # get the different ones
+                #     axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                #     sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                #     coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+                # if mode == "3d":
+                #     axial512 = axialFunc( [  self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+                #     sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+                #     coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
 
-                # concat them
-                concat = []
-                concat.extend ( axial512[0][0].tolist() )
-                concat.extend ( sagittal512[0][0].tolist() )
-                concat.extend ( coronal512[0][0].tolist() )
-                #
-                concat = np.array(concat ,'float32').reshape(1,len(concat))
-                # now do one last function
-                preds = mergeFunc( [ concat , 0 ])
-                #
-                logitsBal = np.array( [ preds[0][0][0] * zeroWeight ,  preds[0][0][1] * oneWeight ]  ) .reshape(1,2)
-                logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+                # # concat them
+                # concat = []
+                # concat.extend ( axial512[0][0].tolist() )
+                # concat.extend ( sagittal512[0][0].tolist() )
+                # concat.extend ( coronal512[0][0].tolist() )
+                # #
+                # concat = np.array(concat ,'float32').reshape(1,len(concat))
+                # # now do one last function
+                # preds = mergeFunc( [ concat , 0 ])
+                # #
+                # logitsBal = np.array( [ preds[0][0][0]  ,  preds[0][0][1]  ]  ) .reshape(1,2)   # * zeroWeight -  * oneWeight
+                # logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
 
             else:
                 print("no fork - not tested")
 
 
+        print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
+        print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] )  )
+
         logits = np.array(logits)
-        print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
+
+        print ("logits: " , logits.shape , logits[0] , logits[30]   )
         auc1 , auc2 = AUC(  self.y_val ,  logits )
         print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
         print ("wtf2")

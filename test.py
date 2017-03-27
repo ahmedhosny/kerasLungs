@@ -9,11 +9,11 @@ from keras import backend as K
 
 
 #
-RUN = "26"
-print (" testing : run: A " , RUN)
-mode = "3d"
-finalSize = 130
-imgSize = 100
+RUN = "32"
+print (" testing : run: B " , RUN)
+mode = "2d"
+finalSize = 110
+imgSize = 80
 fork = True
 count = 2 # only if mode 3d and fork=True
 funcs.valTestMultiplier = 1
@@ -82,7 +82,7 @@ oneWeight = zeros / ((ones+zeros)*1.0)
 print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 
 
-#
+
 #
 #     MMP""MM""YMM `7MM"""YMM   .M"""bgd MMP""MM""YMM
 #     P'   MM   `7   MM    `7  ,MI    "Y P'   MM   `7
@@ -160,8 +160,8 @@ if fork:
     mergeFunc = K.function([ myModel.layers[1].input , K.learning_phase()  ], 
                        [ myModel.layers[2].output ] ) 
 
-    softmaxFunc = K.function([ myModel.layers[3].input , K.learning_phase()  ], 
-                       [ myModel.layers[3].output ] )
+    softmaxFunc = K.function([ myModel.layers[5].input , K.learning_phase()  ], 
+                       [ myModel.layers[5].output ] )
 
 
 else:
@@ -188,36 +188,86 @@ for i in range (dataFrameTest.shape[0]):
 
     if fork:
 
-        if mode == "2d":
-            # get the different ones
-            axial512 = axialFunc( [  x_test_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-            sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-            coronal512 = coronalFunc( [  x_test_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-        if mode == "3d":
-            axial512 = axialFunc( [  x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-            sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-            coronal512 = coronalFunc( [  x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+        #
+        #
+        #     `7MM"""Mq.`7MM"""Mq.  `7MM"""YMM  `7MM"""Yb. `7MMF' .g8"""bgd MMP""MM""YMM
+        #       MM   `MM. MM   `MM.   MM    `7    MM    `Yb. MM .dP'     `M P'   MM   `7
+        #       MM   ,M9  MM   ,M9    MM   d      MM     `Mb MM dM'       `      MM
+        #       MMmmdM9   MMmmdM9     MMmmMM      MM      MM MM MM               MM
+        #       MM        MM  YM.     MM   Y  ,   MM     ,MP MM MM.              MM
+        #       MM        MM   `Mb.   MM     ,M   MM    ,dP' MM `Mb.     ,'      MM
+        #     .JMML.    .JMML. .JMM..JMMmmmmMMM .JMMmmmdP' .JMML. `"bmmmd'     .JMML.
+        #
+        #
 
-        # concat them
-        concat = []
-        concat.extend ( axial512[0][0].tolist() )
-        concat.extend ( sagittal512[0][0].tolist() )
-        concat.extend ( coronal512[0][0].tolist() )
+        if mode == "2d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,imgSize,imgSize,1) , 
+                x_test_s[i].reshape(1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,imgSize,imgSize,1) ]  )
+            print (y_pred[0])
+            logits.append( y_pred[0] )
+        if mode == "3d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
+            print (y_pred[0])
+            logits.append( y_pred[0] )
+
+
+
         #
-        concat = np.array(concat ,'float32').reshape(1,len(concat))
-        # now do one last function
-        preds = mergeFunc( [ concat , 0 ])
-        print (   preds[0][0][0] ,  preds[0][0][1]   )
         #
-        logitsBal = np.array( [ preds[0][0][0] * zeroWeight ,  preds[0][0][1] * oneWeight ]  ) .reshape(1,2)
-        logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+        #     `7MM"""Yb. `7MM"""YMM  `7MN.   `7MF'.M"""bgd `7MM"""YMM
+        #       MM    `Yb. MM    `7    MMN.    M ,MI    "Y   MM    `7
+        #       MM     `Mb MM   d      M YMb   M `MMb.       MM   d     pd*"*b.
+        #       MM      MM MMmmMM      M  `MN. M   `YMMNq.   MMmmMM    (O)   j8
+        #       MM     ,MP MM   Y  ,   M   `MM.M .     `MM   MM   Y  ,     ,;j9
+        #       MM    ,dP' MM     ,M   M     YMM Mb     dM   MM     ,M  ,-='
+        #     .JMMmmmdP' .JMMmmmmMMM .JML.    YM P"Ybmmd"  .JMMmmmmMMM Ammmmmmm
+        #
+        #
+
+
+        # if mode == "2d":
+        #     # get the different ones
+        #     axial512 = axialFunc( [  x_test_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+        #     sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+        #     coronal512 = coronalFunc( [  x_test_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+        # if mode == "3d":
+        #     axial512 = axialFunc( [  x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+        #     sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+        #     coronal512 = coronalFunc( [  x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+
+        # # concat them
+        # concat = []
+        # concat.extend ( axial512[0][0].tolist() )
+        # concat.extend ( sagittal512[0][0].tolist() )
+        # concat.extend ( coronal512[0][0].tolist() )
+        # #
+        # concat = np.array(concat ,'float32').reshape(1,len(concat))
+        # # now do one last function
+        # preds = mergeFunc( [ concat , 0 ])
+        # print (   preds[0][0][0] ,  preds[0][0][1]   )
+        # #
+        # logitsBal = np.array( [ preds[0][0][0] ,  preds[0][0][1] ]  ) .reshape(1,2) # * zeroWeight  , * oneWeight 
+        # logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
 
     else:
 
         print("no fork - not tested")
 
 
+
+print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
+print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] )  )
+
+
 logits = np.array(logits)
+# save logits
+np.save( "/home/ubuntu/output/" + RUN + "_test_logits.npy", logits )
+
 print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
 auc1 , auc2 = funcs.AUC(  y_test ,  logits )
 print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
