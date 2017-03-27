@@ -531,27 +531,27 @@ class Histories(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
 
 
-        if fork:
+        # if fork:
 
-            # (0 = test, 1 = train) 
-            axialFunc = K.function([ self.model.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
-                               [ self.model.layers[0].layers[0].layers[-1].output ] )
+        #     # (0 = test, 1 = train) 
+        #     axialFunc = K.function([ self.model.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
+        #                        [ self.model.layers[0].layers[0].layers[-1].output ] )
 
-            sagittalFunc = K.function([ self.model.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
-                               [ self.model.layers[0].layers[1].layers[-1].output ] )
+        #     sagittalFunc = K.function([ self.model.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
+        #                        [ self.model.layers[0].layers[1].layers[-1].output ] )
 
-            coronalFunc = K.function([ self.model.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
-                               [ self.model.layers[0].layers[2].layers[-1].output ] )
+        #     coronalFunc = K.function([ self.model.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
+        #                        [ self.model.layers[0].layers[2].layers[-1].output ] )
 
-            mergeFunc = K.function([ self.model.layers[1].input , K.learning_phase()  ], 
-                               [ self.model.layers[2].output ] ) 
+        #     mergeFunc = K.function([ self.model.layers[1].input , K.learning_phase()  ], 
+        #                        [ self.model.layers[2].output ] ) 
 
-            softmaxFunc = K.function([ self.model.layers[3].input , K.learning_phase()  ], 
-                               [ self.model.layers[3].output ] )
+        #     softmaxFunc = K.function([ self.model.layers[3].input , K.learning_phase()  ], 
+        #                        [ self.model.layers[3].output ] )
 
-        else:
+        # else:
 
-            print("no fork - not tested")
+        #     print("no fork - not tested")
 
 
         logits = []
@@ -573,9 +573,9 @@ class Histories(keras.callbacks.Callback):
             #   
                 if mode == "2d":
                     # get predictions
-                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 
-                        self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
-                        self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
+                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) ] ) #, 
+                        # self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
+                        # self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
                     logits.append( y_pred[0] )
 
                 if mode == "3d":

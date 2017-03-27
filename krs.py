@@ -216,7 +216,7 @@ def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode): # clini
         for   _a_train,_s_train,_c_train,_y_train in zip(
             a_train,s_train,c_train,y_train_out): 
 
-            yield [ _a_train , _s_train , _c_train ] , _y_train 
+            yield [ _a_train  ] , _y_train   # , _s_train , _c_train
 
             batches += 1
             if batches ==  len(a_train) :

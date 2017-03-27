@@ -9,7 +9,7 @@ from keras import backend as K
 
 
 #
-RUN = "32"
+RUN = "34"
 print (" testing : run: B " , RUN)
 mode = "2d"
 finalSize = 110
@@ -145,28 +145,28 @@ myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 #
 #
 
-if fork:
+# if fork:
 
-    # (0 = test, 1 = train) 
-    axialFunc = K.function([ myModel.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
-                       [ myModel.layers[0].layers[0].layers[-1].output ] )
+#     # (0 = test, 1 = train) 
+#     axialFunc = K.function([ myModel.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
+#                        [ myModel.layers[0].layers[0].layers[-1].output ] )
 
-    sagittalFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
-                       [ myModel.layers[0].layers[1].layers[-1].output ] )
+#     sagittalFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
+#                        [ myModel.layers[0].layers[1].layers[-1].output ] )
 
-    coronalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
-                       [ myModel.layers[0].layers[2].layers[-1].output ] )
+#     coronalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
+#                        [ myModel.layers[0].layers[2].layers[-1].output ] )
 
-    mergeFunc = K.function([ myModel.layers[1].input , K.learning_phase()  ], 
-                       [ myModel.layers[2].output ] ) 
+#     mergeFunc = K.function([ myModel.layers[1].input , K.learning_phase()  ], 
+#                        [ myModel.layers[2].output ] ) 
 
-    softmaxFunc = K.function([ myModel.layers[5].input , K.learning_phase()  ], 
-                       [ myModel.layers[5].output ] )
+#     softmaxFunc = K.function([ myModel.layers[5].input , K.learning_phase()  ], 
+#                        [ myModel.layers[5].output ] )
 
 
-else:
+# else:
 
-    print("no fork - not tested")
+#     print("no fork - not tested")
 
 
 #
@@ -202,16 +202,16 @@ for i in range (dataFrameTest.shape[0]):
 
         if mode == "2d":
             # get predictions
-            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,imgSize,imgSize,1) , 
-                x_test_s[i].reshape(1,imgSize,imgSize,1) , 
-                x_test_c[i].reshape(1,imgSize,imgSize,1) ]  )
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,imgSize,imgSize,1)  ] ) # , 
+                # x_test_s[i].reshape(1,imgSize,imgSize,1) , 
+                # x_test_c[i].reshape(1,imgSize,imgSize,1) ]  )
             print (y_pred[0])
             logits.append( y_pred[0] )
         if mode == "3d":
             # get predictions
-            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
-                x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
-                x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) ] ) #  , 
+                # x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                # x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
             print (y_pred[0])
             logits.append( y_pred[0] )
 

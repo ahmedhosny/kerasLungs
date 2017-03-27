@@ -15,7 +15,7 @@ from keras.utils.visualize_util import plot
 #
 #
 #
-RUN = "33"
+RUN = "34"
 print (" training : run: A " , RUN)
 mode = "2d"
 batch_size = 64 # # 64 # 128
@@ -68,32 +68,34 @@ with tf.device('/gpu:0'):
 
     histories = funcs.Histories()
 
-    model = Sequential()
+    # model = Sequential()
 
-    if fork:
+    # if fork:
 
-        if mode == "3d":
-            model_A = funcs.make3dConvModel(imgSize,count)  
-            model_S = funcs.make3dConvModel(imgSize,count)  
-            model_C = funcs.make3dConvModel(imgSize,count) 
-        elif mode == "2d":
-            model_A = funcs.make2dConvModel(imgSize)  
-            model_S = funcs.make2dConvModel(imgSize)  
-            model_C = funcs.make2dConvModel(imgSize)     
+    #     if mode == "3d":
+    #         model_A = funcs.make3dConvModel(imgSize,count)  
+    #         model_S = funcs.make3dConvModel(imgSize,count)  
+    #         model_C = funcs.make3dConvModel(imgSize,count) 
+    #     elif mode == "2d":
+    #         model_A = funcs.make2dConvModel(imgSize)  
+    #         model_S = funcs.make2dConvModel(imgSize)  
+    #         model_C = funcs.make2dConvModel(imgSize)     
 
-        # 
-        model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) # 512*3 + 3 # model_0 ,
-        model.add(Dropout(0.5))
-        model.add(Dense(512))
-        model.add(Dropout(0.5))
+    #     # 
+    #     model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) # 512*3 + 3 # model_0 ,
+    #     model.add(Dropout(0.5))
+    #     model.add(Dense(512))
+    #     model.add(Dropout(0.5))
 
-    else:
-         # overwrites model
-        model = funcs.makeSingle3dConvModel(imgSize, skip)
-        model.add(Dense(256))
-        model.add(Dropout(0.5))
+    # else:
+    #      # overwrites model
+    #     model = funcs.makeSingle3dConvModel(imgSize, skip)
+    #     model.add(Dense(256))
+    #     model.add(Dropout(0.5))
 
-    
+    model = funcs.make2dConvModel(imgSize) 
+    model.add(Dense(256))
+    model.add(Dropout(0.5))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
 
