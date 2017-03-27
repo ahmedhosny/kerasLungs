@@ -19,12 +19,14 @@ import scipy.misc
 #
 #
 
+# this offsets the 150x150x150 patch into a smaller one equally from all sides
 def offsetPatch(arr, finalSize):
     offset = int( (150-finalSize) / 2.0 )
     offsetEnd = int ( 150-offset )
     return arr[ offset:offsetEnd , offset:offsetEnd , offset:offsetEnd ]
     
-
+# this function is used only during val/test
+# it gets the middle patch by feeding "4" into rand
 def getMiniPatch(rand,arr,imgSize):
     lower = arr.shape[0] - imgSize
     maxi = arr.shape[0]
@@ -52,6 +54,7 @@ def getMiniPatch(rand,arr,imgSize):
     elif rand == 8:
         return arr[lower:maxi,lower:maxi,0:imgSize]  
 
+# these 4 functions below apply rotations during augmentation
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 + 0.5
     o_y = float(y) / 2 + 0.5
@@ -96,23 +99,26 @@ def applyRotation(arr,theta):
 
 #
 #
-#              `7MM"""Yb.        ,gM""bg                  `7MM"""Yb.
-#                MM    `Yb.      8MI  ,8                    MM    `Yb.
-#      pd*"*b.   MM     `Mb       WMp,"           pd""b.    MM     `Mb
-#     (O)   j8   MM      MM      ,gPMN.  jM"'    (O)  `8b   MM      MM
-#         ,;j9   MM     ,MP     ,M.  YMp.M'           ,89   MM     ,MP
-#      ,-='      MM    ,dP'     8Mp   ,MMp          ""Yb.   MM    ,dP'
-#     Ammmmmmm .JMMmmmdP'       `YMbmm'``MMm.          88 .JMMmmmdP'
-#                                                (O)  .M'
-#                                                 bmmmd'
+#       .g8"""bgd `7MM"""YMM  `7MN.   `7MF'`7MM"""YMM  `7MM"""Mq.        db   MMP""MM""YMM   .g8""8q. `7MM"""Mq.
+#     .dP'     `M   MM    `7    MMN.    M    MM    `7    MM   `MM.      ;MM:  P'   MM   `7 .dP'    `YM. MM   `MM.
+#     dM'       `   MM   d      M YMb   M    MM   d      MM   ,M9      ,V^MM.      MM      dM'      `MM MM   ,M9
+#     MM            MMmmMM      M  `MN. M    MMmmMM      MMmmdM9      ,M  `MM      MM      MM        MM MMmmdM9
+#     MM.    `7MMF' MM   Y  ,   M   `MM.M    MM   Y  ,   MM  YM.      AbmmmqMA     MM      MM.      ,MP MM  YM.
+#     `Mb.     MM   MM     ,M   M     YMM    MM     ,M   MM   `Mb.   A'     VML    MM      `Mb.    ,dP' MM   `Mb.
+#       `"bmmmdPY .JMMmmmmMMM .JML.    YM  .JMMmmmmMMM .JMML. .JMM..AMA.   .AMMA..JMML.      `"bmmd"' .JMML. .JMM.
+#
+#
 
 # augments, randmoizes and splits into batches.
-def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchSize, mode): # clinical_train,
+# 
+def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mode, fork, skip): 
     
-
+    # for forking
     arr_a_list = []
     arr_s_list = []
     arr_c_list = []
+    # for no forking
+    arr_list = []
 
     counter = 0
     # loop through each patient.
@@ -130,6 +136,13 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchS
         # reshape to make one channel
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
 
+        # if single and mode is 3d, lets slim down the cube a bit
+        if not fork and mode == "3d":
+            # EXTRACT SLIMMED DOWN CUBE
+            miniPatch = miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]
+
+
+        # if we want to augment the data
         if augmentTraining:
 
             # flip bools
@@ -148,89 +161,144 @@ def augmentAndSplitTrain_3Dand2D(x_train,y_train,finalSize,imgSize,count, batchS
             # rotation
             angleList = [-180,-90,0,90,180]
             randAng = angleList [ random.randint(0,4) ]
-            theta = np.pi / 180 *  randAng #  np.random.uniform(-180, 180) # randAng #
-            #
+            theta = np.pi / 180 *  randAng # 
+            # option 1 :  np.random.uniform(-180, 180) 
+            # option 2 : randAng 
+            
             miniPatch = applyRotation(miniPatch,theta) 
 
-            # OTHER AUGMENTATIONS COME HERE
+            # OTHER AUGMENTATIONS COME HERE .....
+
 
         # EXTRACT ORIENTATION SLICES
-        skip = 4 # in mm or pixel
         travel = int(count * skip)
         mid  = int(imgSize/2.0)
 
-        if mode == "3d":
+        # if we are forking - either 2d or 3d
+        if fork:
 
-            #
-            arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
-            #
-            arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
-            arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
-            #
-            arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
-            arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+            if mode == "3d":
+                #
+                arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+                #
+                arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+                arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+                #
+                arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+                arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
 
-        elif mode == "2d":
+            elif mode == "2d":
+                #
+                arr_a_list.append( miniPatch [mid,:,:] )
+                arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
+                arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
 
-            arr_a_list.append( miniPatch [mid,:,:] )
-            arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
-            arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
+                # for saving images - ONLY 2d
+                # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter) + "_A.png" , miniPatch [mid,:,:].reshape(imgSize,imgSize) )
+                # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+1) + "_S.png" , np.flipud ( miniPatch [:,:,mid] ).reshape(imgSize,imgSize) )
+                # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+2) + "_C.png" , np.flipud ( miniPatch [:,mid,:] ).reshape(imgSize,imgSize) )
+                # counter = counter+3
 
-            
-            # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter) + "_A.png" , miniPatch [mid,:,:].reshape(imgSize,imgSize) )
-            # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+1) + "_S.png" , np.flipud ( miniPatch [:,:,mid] ).reshape(imgSize,imgSize) )
-            # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+2) + "_C.png" , np.flipud ( miniPatch [:,mid,:] ).reshape(imgSize,imgSize) )
-            # counter = counter+3
+        # if single i.e. no forking
+        else: 
+
+            if mode == "3d":
+                # append as is - skipping already done before augmentation to speed things up
+                arr_list.append (  miniPatch  )
+
+            elif mode == "2d":
+                arr_list.append (  miniPatch [mid,:,:] ) # only axial
+
+    #
+    # AFTER LOOP 
+    #
+    if fork:        
+        # RANDOMIZE
+        idx = np.random.permutation( len(x_train))
+        # all is 5, batch size is 2, batch proper is 4, no of batches is 2
+        batchProper = len(x_train) - (len(x_train)%batchSize) 
+        noOfBatches = batchProper / batchSize
+        # reorder all and take first batch*int entries i.e. leave remainder out, then split
+        a_train = np.split  (   np.array( arr_a_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+        s_train = np.split  (   np.array( arr_s_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+        c_train = np.split  (   np.array( arr_c_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+        # now the label
+        y_train_out = np.split  (     y_train                    [idx] [:batchProper]   , noOfBatches )     
+
+        return a_train,s_train,c_train,y_train_out 
+
+    else:
+
+        # AFTER LOOP
+        # RANDOMIZE
+        idx = np.random.permutation( len(x_train))
+        # all is 5, batch size is 2, batch proper is 4, no of batches is 2
+        batchProper = len(x_train) - (len(x_train)%batchSize) 
+        noOfBatches = batchProper / batchSize
+        # reorder all and take first batch*int entries i.e. leave remainder out, then split
+        x_train_new = np.split  (   np.array( arr_list, 'float32') [idx] [:batchProper]   , noOfBatches )
+        #
+        y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
+
+        return x_train_new,y_train_out
+
+
+
+
         
-    # AFTER LOOP
-    # RANDOMIZE
-    idx = np.random.permutation( len(x_train))
-    # all is 5, batch size is 2, batch proper is 4, no of batches is 2
-    batchProper = len(x_train) - (len(x_train)%batchSize) 
-    noOfBatches = batchProper / batchSize
-    # reorder all and take first batch*int entries i.e. leave remainder out, then split
-    a_train = np.split  (   np.array( arr_a_list, 'float32') [idx] [:batchProper]   , noOfBatches )
-    s_train = np.split  (   np.array( arr_s_list, 'float32') [idx] [:batchProper]   , noOfBatches )
-    c_train = np.split  (   np.array( arr_c_list, 'float32') [idx] [:batchProper]   , noOfBatches )
 
-    y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
-
-
-
-    return a_train,s_train,c_train,y_train_out 
 
 # runs every epoch
-def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode): # clinical_train,
+def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip): # clinical_train,
 
 
     while True:
         
-        # these are acually lists of batches
-        a_train,s_train,c_train,y_train_out = augmentAndSplitTrain_3Dand2D(x_train,y_train, 
-                                                                 finalSize,imgSize,count,batchSize,mode)
+        #####
+        if fork:
+            # these are acually lists of batches
+            a_train,s_train,c_train,y_train_out = augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip)
 
+            batches = 0
+            for   _a_train,_s_train,_c_train,_y_train in zip(
+                a_train,s_train,c_train,y_train_out): 
 
-        # print ("final train batch data:" , a_train[0].shape,s_train[0].shape,c_train[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
+                yield [ _a_train ,_s_train , _c_train ] , _y_train  
+
+                batches += 1
+                if batches ==  len(a_train) :
+                    break
+
+        #### 
+        else:
+            # these are acually lists of batches
+            x_train_out,y_train_out = augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip)
+
+            batches = 0
+            for   _x_train,_y_train in zip( 
+                x_train_out,y_train_out ):
+
+                yield [ _x_train ] , _y_train   
+
+                batches += 1
+                if batches ==  len(x_train_out) :
+                    break
         
-        batches = 0
-        for   _a_train,_s_train,_c_train,_y_train in zip(
-            a_train,s_train,c_train,y_train_out): 
-
-            yield [ _a_train  ] , _y_train   # , _s_train , _c_train
-
-            batches += 1
-            if batches ==  len(a_train) :
-                break
 
 
 
-# val/test
 
-def splitValTest(x_valTest,finalSize,imgSize,count,mode):
 
+# this is used to extract the slices (either 2d or 3d. fork or no fork) from the validation or test sets
+# for training, this is automatically done in the generator
+def splitValTest(x_valTest,finalSize,imgSize,count,mode,fork,skip):
+
+    # for forking
     arr_a_list = []
     arr_s_list = []
     arr_c_list = []
+    # for no forking
+    arr_list = []
 
     # loop through each patient.
     for arr in iter(x_valTest):
@@ -238,8 +306,7 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode):
         # offset array to get a smaller one
         offsetArr = offsetPatch(arr, finalSize)
 
-        # get miniPatch (0~9)
-        # randInt = random.randint(0,9)
+        # gets the patch at the center
         miniPatch = getMiniPatch(4,offsetArr,imgSize)
 
         # reshape to make channel
@@ -247,168 +314,50 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode):
 
 
         # EXTRACT ORIENTATION SLICES
-        skip = 4 # in mm or pixel
         travel = int(count * skip)
         mid  = int(imgSize/2.0)
 
+        if fork:
 
-        if mode == "3d":
+            if mode == "3d":
+                #
+                arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+                #
+                arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+                arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+                #
+                arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+                arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
 
-            #
-            arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
-            #
-            arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
-            arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
-            #
-            arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
-            arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+            elif mode == "2d":
+                #
+                arr_a_list.append( miniPatch [mid,:,:] )
+                arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
+                arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
 
-        elif mode == "2d":
+        else:
 
-            arr_a_list.append( miniPatch [mid,:,:] )
-            arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
-            arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
-
-
-        
-    arr_a_list = np.array( arr_a_list ) 
-    arr_s_list = np.array( arr_s_list )
-    arr_c_list = np.array( arr_c_list )  
-        
-    
-        
-    return arr_a_list,arr_s_list,arr_c_list
+            if mode == "3d":
+                # EXTRACT SINGLE
+                arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+            elif mode == "2d":
+                arr_list.append (  miniPatch [mid,:,:] ) # only axial
 
 
-
-
-#
-#
-#      .M"""bgd `7MMF'`7MN.   `7MF' .g8"""bgd `7MMF'      `7MM"""YMM               `7MM"""Yb.
-#     ,MI    "Y   MM    MMN.    M .dP'     `M   MM          MM    `7                 MM    `Yb.
-#     `MMb.       MM    M YMb   M dM'       `   MM          MM   d         pd""b.    MM     `Mb
-#       `YMMNq.   MM    M  `MN. M MM            MM          MMmmMM        (O)  `8b   MM      MM
-#     .     `MM   MM    M   `MM.M MM.    `7MMF' MM      ,   MM   Y  ,          ,89   MM     ,MP
-#     Mb     dM   MM    M     YMM `Mb.     MM   MM     ,M   MM     ,M        ""Yb.   MM    ,dP'
-#     P"Ybmmd"  .JMML..JML.    YM   `"bmmmdPY .JMMmmmmMMM .JMMmmmmMMM           88 .JMMmmmdP'
-#                                                                         (O)  .M'
-#                                                                          bmmmd'
-
-# augments, randmoizes and splits into batches.
-def augmentAndSplitTrain_single3D(x_train,y_train,clinical_train,finalSize,imgSize, batchSize, skip):
-    
-
-    arr_list = []
-
-    # loop through each patient.
-    for arr in iter(x_train):
-
-        # offset array to get a smaller one
-        offsetArr = offsetPatch(arr, finalSize)
-
-        # get random miniPatch 
-        offstX = random.randint(0,finalSize-imgSize)
-        offstY = random.randint(0,finalSize-imgSize)
-        offstZ = random.randint(0,finalSize-imgSize)
-        miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
-
-        # reshape to make channel
-        miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
-
-        # EXTRACT SLIMMED DOWN CUBE
-        miniPatch = miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]
-
-
-        # flip bools
-        flipBoolud = bool(random.getrandbits(1))
-        flipBoolio = bool(random.getrandbits(1))
-        flipBoolrl = bool(random.getrandbits(1))
-
-        #
-        if flipBoolud:
-            miniPatch =  np.fliplr(miniPatch)    
-        if flipBoolio:
-            miniPatch =  np.flipud(miniPatch) 
-        if flipBoolrl:
-            miniPatch =  miniPatch[:,:,::-1]
-
-        # rotation
-        # angleList = [-180,-90,0,90,180]
-        # randAng = angleList [ random.randint(0,4) ]
-        theta = np.pi / 180 * np.random.uniform(-180, 180)  # randAng #   
-        #
-        miniPatch = applyRotation(miniPatch,theta) 
-
-        # OTHER AUGMENTATIONS COME HERE
-
-
-        # EXTRACT SINGLE
-        arr_list.append (  miniPatch )
-     
-        
-    # AFTER LOOP
-    # RANDOMIZE
-    idx = np.random.permutation( len(x_train))
-    # all is 5, batch size is 2, batch proper is 4, no of batches is 2
-    batchProper = len(x_train) - (len(x_train)%batchSize) 
-    noOfBatches = batchProper / batchSize
-    # reorder all and take first batch*int entries i.e. leave remainder out, then split
-    x_train_new = np.split  (   np.array( arr_list, 'float32') [idx] [:batchProper]   , noOfBatches )
     #
-    y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
+    # AFTER LOOP - no randomizing here - just as is
+    #
+    if fork:        
+        # 
+        arr_a_list = np.array( arr_a_list ) 
+        arr_s_list = np.array( arr_s_list )
+        arr_c_list = np.array( arr_c_list )  
+               
+        return arr_a_list,arr_s_list,arr_c_list
 
-
-
-    return x_train_new,y_train_out
-
-# runs every epoch
-def myGenerator_single3D(x_train,y_train,clinical_train,finalSize,imgSize,batchSize, skip):
-
-
-    while True:
-        
-        # these are acually lists of batches
-        x_train_out,y_train_out = augmentAndSplitTrain_single3D(x_train,y_train,
-                                                                 finalSize,imgSize,batchSize, skip)
-
-        # print ("final train batch data:" , x_train_out[0].shape,y_train_out[0].shape,clinical_train_out[0].shape)
-        
-        batches = 0
-        for   _x_train,_y_train in zip( 
-            x_train_out,y_train_out ):
-
-            yield [ _x_train ] , _y_train   
-
-            batches += 1
-            if batches ==  len(x_train_out) :
-                break
-
-
-
-# VAL/TEST
-
-def splitValTest_single3D(x_valTest,finalSize,imgSize,skip):
-
-    arr_list = []
-
-    # loop through each patient.
-    for arr in iter(x_valTest):
-
-        # offset array to get a smaller one
-        offsetArr = offsetPatch(arr, finalSize)
-
-        # get miniPatch (0~9)
-        # randInt = random.randint(0,9)
-        miniPatch = getMiniPatch(4,offsetArr,imgSize)
-
-        # reshape to make channel
-        miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
-
-        # EXTRACT SINGLE
-        arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
-     
-    arr_list = np.array( arr_list ) 
+    else:
+        #
+        arr_list = np.array( arr_list ) 
       
-    return arr_list
-
+        return arr_list
 

@@ -155,20 +155,15 @@ def manageDataFrames():
 
 
 
-def getXandY(dataFrame,imgSize, bool):
+def getXandY(dataFrame,imgSize):
 
-    # if train, aug factor is always one.
-    augmentationFactor = 1
-    
-    # if validate or test, change if needed
-    if (bool):
-        augmentationFactor = valTestMultiplier
+
 
     arrList = []
     y = []
     zeros = 0
     ones = 0
-    clincical = []
+    # clincical = []
     
     for i in range (dataFrame.shape[0]):
 
@@ -180,7 +175,7 @@ def getXandY(dataFrame,imgSize, bool):
         arrList.append (  arr )  
 
         # Y #
-        y.extend ( [ int(dataFrame.surv2yr[i]) for x in range (augmentationFactor) ] )
+        y.append ( int(dataFrame.surv2yr[i])  )
 
         # zeros and ones
         if int(dataFrame.surv2yr[i]) == 1:
@@ -190,17 +185,17 @@ def getXandY(dataFrame,imgSize, bool):
         else:
             raise Exception("a survival value is not 0 or 1")
 
-        # now clinical
-        clincicalVector = [ dataFrame.age[i] , dataFrame.stage[i] , dataFrame.histology_grouped[i] ]
-        clincical.extend( [clincicalVector for x in range(augmentationFactor)] )
+        # # now clinical
+        # clincicalVector = [ dataFrame.age[i] , dataFrame.stage[i] , dataFrame.histology_grouped[i] ]
+        # clincical.extend( [clincicalVector for x in range(1)] )
 
 
     # after loop
     arrList = np.array(arrList, 'float32')
     y = np.array(y, 'int8')
     y = np_utils.to_categorical(y, 2)
-    clincical = np.array(clincical , 'float32'  )
-    return arrList,y,zeros,ones,clincical
+    # clincical = np.array(clincical , 'float32'  )
+    return arrList,y,zeros,ones # ,clincical
 
 
 
@@ -215,6 +210,8 @@ def getXandY(dataFrame,imgSize, bool):
 #     .JMML.   MMb..JMMmmmmMMM .JMML. .JMM..AMA.   .AMMA.P"Ybmmd"      .JML. `'  .JMML. `"bmmd"' .JMMmmmdP' .JMMmmmmMMM .JMMmmmmMMM
 #
 #
+
+# not used
 def makeClinicalModel():
     model = Sequential()
     # just histology, stage and age
@@ -252,46 +249,21 @@ def make2dConvModel(imgSize):
     model.add(Dense(512)) # 512
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
-
-
-    # model = Sequential()
-
-    # model.add(Convolution2D(32, 11, 11, border_mode='same',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
-    # model.add(Activation('tanh'))
-
-    # model.add(Convolution2D(64, 9, 9)) # 32
-    # model.add(Activation('tanh'))
-    # model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.5))
-
-    # model.add(Convolution2D(128, 7, 7, border_mode='same')) # 64
-    # model.add(Activation('tanh'))
-
-    # model.add(Convolution2D(96, 5, 5)) # 64
-    # model.add(Activation('tanh'))
-    # model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.5))
-
-    # # this chucnk added - 14
-    # model.add(Convolution2D(256, 3, 3)) # 64
-    # model.add(Activation('tanh'))
-    # model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.5))
-
-    # model.add(Flatten())
-    # model.add(Dense(512)) # 512
-    # model.add(Activation('tanh'))
-    # model.add(Dropout(0.5))
     
     return model
 
 
-def make3dConvModel(imgSize,count):
+
+def make3dConvModel(imgSize,count,fork,skip):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
     
     model = Sequential()
 
-    model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] )) # 32
+    if fork:
+        model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] )) # 32
+    else:
+        model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] )) # 32
+
     model.add(Activation('relu'))
 
     model.add(Convolution3D(48, 2, 5, 5)) # 32
@@ -316,98 +288,6 @@ def make3dConvModel(imgSize,count):
     return model
 
 
-def makeSingle3dConvModel(imgSize,skip):
-    #(samples, rows, cols, channels) if dim_ordering='tf'.
-    
-    model = Sequential()
-
-    model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] )) # 32
-    model.add(Activation('relu'))
-
-    model.add(Convolution3D(48, 2, 5, 5)) # 32
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2))) ### 
-    model.add(Dropout(0.25))
-
-    model.add(Convolution3D(96, 2, 5, 5, border_mode='same')) # 64
-    model.add(Activation('relu'))
-
-    model.add(Convolution3D(96, 1, 5 , 5)) # 64
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    model.add(Dropout(0.25))
-
-
-    model.add(Flatten())
-    model.add(Dense(512)) # 512
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
-    
-    return model
-
-# def make3dConvModel(imgSize,count):
-#     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
-
-#     model = Sequential()
-
-#     conv_filt = 3
-#     conv_filt_depth = 2
-#     #
-
-#     # input = (samples, count*2+1,imgSize,imgSize,1 )
-#     model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[count*2+1,imgSize,imgSize,1]  , activation='relu')) # 32
-#     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
-
-#     model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
-#     model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
-#     model.add( Dropout(0.5) )
-
-#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
-
-#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
-#     model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
-#     model.add(Dropout(0.5))
-    
-#     # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
-
-#     model.add(Flatten())
-#     model.add( Dense(512 , activation='relu' ) ) # 512
-#     model.add(Dropout(0.5))
-    
-#     return model
-
-
-# def makeSingle3dConvModel(imgSize,skip):
-#     # (samples, conv_dim1, conv_dim2, conv_dim3, channels) if dim_ordering='tf'.
-
-#     model = Sequential()
-
-#     conv_filt = 3
-#     conv_filt_depth = 2
-#     #
-
-#     # input = (samples, count*2+1,imgSize,imgSize,1 )
-#     model.add(Convolution3D(48, conv_filt_depth , conv_filt, conv_filt, border_mode='same',dim_ordering='tf' ,input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1]  , activation='relu')) # 32
-#     # output (samples, count*2+1,imgSize,imgSize, nb_filter)
-
-#     model.add( Convolution3D( 48, conv_filt_depth , conv_filt, conv_filt, border_mode='same' , activation='relu' , dim_ordering='tf'  ) ) # 32
-#     model.add( MaxPooling3D( pool_size=(3, 2, 2) , dim_ordering='tf'  ) )
-#     model.add( Dropout(0.5) )
-
-#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'   , dim_ordering='tf' )) # 64
-
-#     model.add(Convolution3D(96, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64
-#     model.add(MaxPooling3D(pool_size=(3, 2, 2) , dim_ordering='tf' ))
-#     model.add(Dropout(0.5))
-    
-#     # model.add(Convolution3D(192, conv_filt_depth , conv_filt, conv_filt,  border_mode='same' , activation='relu'  , dim_ordering='tf'  )) # 64   
-
-#     model.add(Flatten())
-#     model.add( Dense(512 , activation='relu' ) ) # 512
-#     model.add(Dropout(0.5))
-    
-#     return model
-
 
 #
 #
@@ -421,9 +301,8 @@ def makeSingle3dConvModel(imgSize,skip):
 #
 #
 
-# NEW
-# operate on each orientation seperately
 
+# get mean and std from training
 def centerAndStandardizeTraining(arr):
     out = arr
     #
@@ -435,6 +314,7 @@ def centerAndStandardizeTraining(arr):
     #
     return mean,std,out
 
+# apply mean and std to val and test
 def centerAndStandardizeValTest(arr,mean,std):
     out = arr
     #
@@ -443,32 +323,7 @@ def centerAndStandardizeValTest(arr,mean,std):
     #
     return out
 
-# OLD
-
-
-# used for evaluating performance 
-def aggregate(testLabels,logits):
-    mul = valTestMultiplier
-    labelsOut = []
-    logitsOut = []
-    # 
-    for i in range ( 0,testLabels.shape[0],mul ):
-        labelsOut.append( testLabels[i] )
-
-    #
-    for i in range ( 0,testLabels.shape[0],mul ):
-        tempVal0 = 0
-        tempVal1 = 0
-        for k in range (mul):
-            tempVal0 += logits[i+k][0]
-            tempVal1 += logits[i+k][1]
-        val0 = tempVal0 / (mul*1.0)
-        val1 = tempVal1 / (mul*1.0)
-        logitsOut.append( [ val0,val1 ] )
-    #
-    return np.array(labelsOut),np.array(logitsOut)
-
-
+# get auc
 def AUC(test_labels,test_prediction):
     n_classes = 2
     # http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#sphx-glr-auto-examples-model-selection-plot-roc-py
@@ -499,8 +354,8 @@ class Histories(keras.callbacks.Callback):
 
         dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
         #
-        x_val,y_val,zeros,ones,clinical_val =  getXandY(dataFrameValidate,imgSize, True)
-        print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones , clinical_val.shape ) 
+        x_val,y_val,zeros,ones =  getXandY(dataFrameValidate,imgSize)
+        print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones ) 
         self.dataFrameValidate = dataFrameValidate
         self.y_val = y_val
         # lets do featurewiseCenterAndStd - its still a cube at this point
@@ -509,14 +364,13 @@ class Histories(keras.callbacks.Callback):
 
         if fork:
             # lets get the 3 orientations
-            self.x_val_a,self.x_val_s,self.x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode)
+            self.x_val_a,self.x_val_s,self.x_val_c = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode,fork,skip)
             print ("final val data:" , self.x_val_a.shape,self.x_val_s.shape,self.x_val_c.shape)
 
         else:
-            print("single cube - not tested")
-            # x_val = krs.splitValTest_single3D(x_val_cs,finalSize,imgSize,skip)
-            # print ("final val data:" , x_val.shape)
-
+            # lets get one only
+            self.x_val = krs.splitValTest(x_val_cs,finalSize,imgSize,count,mode,fork,skip)
+            print ("final val data:" , x_val.shape)
 
         return
 
@@ -531,98 +385,39 @@ class Histories(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
 
 
-        # if fork:
-
-        #     # (0 = test, 1 = train) 
-        #     axialFunc = K.function([ self.model.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
-        #                        [ self.model.layers[0].layers[0].layers[-1].output ] )
-
-        #     sagittalFunc = K.function([ self.model.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
-        #                        [ self.model.layers[0].layers[1].layers[-1].output ] )
-
-        #     coronalFunc = K.function([ self.model.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
-        #                        [ self.model.layers[0].layers[2].layers[-1].output ] )
-
-        #     mergeFunc = K.function([ self.model.layers[1].input , K.learning_phase()  ], 
-        #                        [ self.model.layers[2].output ] ) 
-
-        #     softmaxFunc = K.function([ self.model.layers[3].input , K.learning_phase()  ], 
-        #                        [ self.model.layers[3].output ] )
-
-        # else:
-
-        #     print("no fork - not tested")
-
 
         logits = []
 
         for i in range (self.dataFrameValidate.shape[0]):
 
-            if fork:
-
-            #
-            #
-            #     `7MM"""Mq.`7MM"""Mq.  `7MM"""YMM  `7MM"""Yb. `7MMF' .g8"""bgd MMP""MM""YMM
-            #       MM   `MM. MM   `MM.   MM    `7    MM    `Yb. MM .dP'     `M P'   MM   `7
-            #       MM   ,M9  MM   ,M9    MM   d      MM     `Mb MM dM'       `      MM
-            #       MMmmdM9   MMmmdM9     MMmmMM      MM      MM MM MM               MM
-            #       MM        MM  YM.     MM   Y  ,   MM     ,MP MM MM.              MM
-            #       MM        MM   `Mb.   MM     ,M   MM    ,dP' MM `Mb.     ,'      MM
-            #     .JMML.    .JMML. .JMM..JMMmmmmMMM .JMMmmmdP' .JMML. `"bmmmd'     .JMML.
-            #
-            #   
-                if mode == "2d":
-                    # get predictions
-                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) ] ) #, 
-                        # self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
-                        # self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
-                    logits.append( y_pred[0] )
+            if fork: 
 
                 if mode == "3d":
                     # get predictions
                     y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
                         self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
                         self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
-                    logits.append( y_pred[0] )
 
-
-
-            #
-            #
-            #     `7MM"""Yb. `7MM"""YMM  `7MN.   `7MF'.M"""bgd `7MM"""YMM
-            #       MM    `Yb. MM    `7    MMN.    M ,MI    "Y   MM    `7
-            #       MM     `Mb MM   d      M YMb   M `MMb.       MM   d     pd*"*b.
-            #       MM      MM MMmmMM      M  `MN. M   `YMMNq.   MMmmMM    (O)   j8
-            #       MM     ,MP MM   Y  ,   M   `MM.M .     `MM   MM   Y  ,     ,;j9
-            #       MM    ,dP' MM     ,M   M     YMM Mb     dM   MM     ,M  ,-='
-            #     .JMMmmmdP' .JMMmmmmMMM .JML.    YM P"Ybmmd"  .JMMmmmmMMM Ammmmmmm
-            #
-            #
-                # if mode == "2d":
-                #     # get the different ones
-                #     axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                #     sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                #     coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-                # if mode == "3d":
-                #     axial512 = axialFunc( [  self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-                #     sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-                #     coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-
-                # # concat them
-                # concat = []
-                # concat.extend ( axial512[0][0].tolist() )
-                # concat.extend ( sagittal512[0][0].tolist() )
-                # concat.extend ( coronal512[0][0].tolist() )
-                # #
-                # concat = np.array(concat ,'float32').reshape(1,len(concat))
-                # # now do one last function
-                # preds = mergeFunc( [ concat , 0 ])
-                # #
-                # logitsBal = np.array( [ preds[0][0][0]  ,  preds[0][0][1]  ]  ) .reshape(1,2)   # * zeroWeight -  * oneWeight
-                # logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+                elif mode == "2d":
+                    # get predictions
+                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) ,
+                        self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
+                        self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
 
             else:
-                print("no fork - not tested")
+
+                if mode == "3d":
+                    # get predictions
+                    dim = int ( imgSize/( 1.0* skip) )
+                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
+
+                elif mode == "2d":
+                    # get predictions
+                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,imgSize,imgSize,1) ] )
+
+            # now after down with switching
+            logits.append( y_pred[0] )
+
 
 
         print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
@@ -635,7 +430,7 @@ class Histories(keras.callbacks.Callback):
         print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
         print ("wtf2")
 
-        # # before appending, check if this auc is the highest in all the lsit
+        # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
         if all(auc1>i for i in self.auc):
             self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
             print("Saved model to disk")
@@ -665,3 +460,68 @@ class Histories(keras.callbacks.Callback):
 
         return
 
+
+#
+#
+#     `7MMF' `YMM' `7MM"""YMM  `7MM"""YMM  `7MM"""Mq.
+#       MM   .M'     MM    `7    MM    `7    MM   `MM.
+#       MM .d"       MM   d      MM   d      MM   ,M9
+#       MMMMM.       MMmmMM      MMmmMM      MMmmdM9
+#       MM  VMA      MM   Y  ,   MM   Y  ,   MM
+#       MM   `MM.    MM     ,M   MM     ,M   MM
+#     .JMML.   MMb..JMMmmmmMMM .JMMmmmmMMM .JMML.
+#
+#
+
+
+# define funcs
+
+# if fork:
+
+#     # (0 = test, 1 = train) 
+#     axialFunc = K.function([ self.model.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
+#                        [ self.model.layers[0].layers[0].layers[-1].output ] )
+
+#     sagittalFunc = K.function([ self.model.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
+#                        [ self.model.layers[0].layers[1].layers[-1].output ] )
+
+#     coronalFunc = K.function([ self.model.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
+#                        [ self.model.layers[0].layers[2].layers[-1].output ] )
+
+#     mergeFunc = K.function([ self.model.layers[1].input , K.learning_phase()  ], 
+#                        [ self.model.layers[2].output ] ) 
+
+#     softmaxFunc = K.function([ self.model.layers[3].input , K.learning_phase()  ], 
+#                        [ self.model.layers[3].output ] )
+
+# else:
+
+#     print("no fork - not tested")
+
+
+
+
+# use funcs
+
+# if mode == "2d":
+#     # get the different ones
+#     axial512 = axialFunc( [  self.x_val_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+#     sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+#     coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
+# if mode == "3d":
+#     axial512 = axialFunc( [  self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+#     sagittal512 = sagittalFunc( [  self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+#     coronal512 = coronalFunc( [  self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
+
+# # concat them
+# concat = []
+# concat.extend ( axial512[0][0].tolist() )
+# concat.extend ( sagittal512[0][0].tolist() )
+# concat.extend ( coronal512[0][0].tolist() )
+# #
+# concat = np.array(concat ,'float32').reshape(1,len(concat))
+# # now do one last function
+# preds = mergeFunc( [ concat , 0 ])
+# #
+# logitsBal = np.array( [ preds[0][0][0]  ,  preds[0][0][1]  ]  ) .reshape(1,2)   # * zeroWeight -  * oneWeight
+# logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )

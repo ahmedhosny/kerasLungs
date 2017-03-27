@@ -7,43 +7,26 @@ import tensorflow as tf
 from keras import backend as K
 
 
+# current version
+RUN = "37"
+# you want 2d or 3d convolutions?
+mode = "3d"
+# you want single architecture or 3-way architecture
+fork = False
+# final size should not be greater than 150
+finalSize = 110 
+# size of minipatch fed to net
+imgSize = 80 
+# for 3d + fork , # of slices to take in each direction
+count = 3 
+# for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
+# for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
+skip = 2
 
-#
-RUN = "34"
-print (" testing : run: B " , RUN)
-mode = "2d"
-finalSize = 110
-imgSize = 80
-fork = True
-count = 2 # only if mode 3d and fork=True
-funcs.valTestMultiplier = 1
-# 
-skip = 3 # if fork false: imgSize/skip should be int
+# print 
+print ("training : run: " , RUN )
 
 
-
-# get only death by disease
-# all patients with cause of death 1
-# diseaseDeath = np.load("rt_diseaseDeath.npy").astype(str)
-# print (len(diseaseDeath))
-
-# dataFrameTest0 = dataFrameTest[ dataFrameTest['deadstat'] == 0.0 ]
-# print (dataFrameTest0.shape)
-
-# dataFrameTest1 = dataFrameTest[ dataFrameTest['deadstat'] == 1.0 ]
-# print (dataFrameTest1.shape)
-
-# dataFrameTest1_1 = dataFrameTest1 [ dataFrameTest1["patient"].isin(diseaseDeath) ]
-# print (dataFrameTest1_1.shape)
-
-# dataFrameTest = pd.concat([dataFrameTest0,dataFrameTest1_1],axis=0)
-# dataFrameTest = dataFrameTest.reset_index(drop=True)
-# print dataFrameTest.shape
-
-#
-#
-#
-#
 
 
 #
@@ -72,7 +55,7 @@ dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 #
 #
 
-x_train,y_train,zeros,ones,clinical_train =  funcs.getXandY(dataFrameTrain,imgSize, False)
+x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
 mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
 print ( "mean and std shape: " ,mean.shape,std.shape )
 
@@ -94,7 +77,7 @@ print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 #
 
 
-x_test,y_test,zeros,ones,clinical_test =  funcs.getXandY(dataFrameTest,imgSize, True)
+x_test,y_test,zeros,ones =  funcs.getXandY(dataFrameTest,imgSize)
 print ("test data:" , x_test.shape,  y_test.shape  ) 
 
 # center and standardize
@@ -103,12 +86,15 @@ x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
 
 if fork:
     # lets get the 3 orientations
-    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode)
+    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test,finalSize,imgSize,count,mode,fork,skip)
     print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
 
 else:
-    x_test = krs.splitValTest_single3D(x_test_cs,finalSize,imgSize,skip)
+    x_test = krs.splitValTest(x_test,finalSize,imgSize,count,mode,fork,skip)
     print ("final val data:" , x_test.shape)
+
+
+
 
 
 #
@@ -135,42 +121,6 @@ myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 
 #
 #
-#     `7MM"""YMM `7MMF'   `7MF'`7MN.   `7MF' .g8"""bgd  .M"""bgd
-#       MM    `7   MM       M    MMN.    M .dP'     `M ,MI    "Y
-#       MM   d     MM       M    M YMb   M dM'       ` `MMb.
-#       MM""MM     MM       M    M  `MN. M MM            `YMMNq.
-#       MM   Y     MM       M    M   `MM.M MM.         .     `MM
-#       MM         YM.     ,M    M     YMM `Mb.     ,' Mb     dM
-#     .JMML.        `bmmmmd"'  .JML.    YM   `"bmmmd'  P"Ybmmd"
-#
-#
-
-# if fork:
-
-#     # (0 = test, 1 = train) 
-#     axialFunc = K.function([ myModel.layers[0].layers[0].layers[0].input , K.learning_phase()  ], 
-#                        [ myModel.layers[0].layers[0].layers[-1].output ] )
-
-#     sagittalFunc = K.function([ myModel.layers[0].layers[1].layers[0].input , K.learning_phase()  ], 
-#                        [ myModel.layers[0].layers[1].layers[-1].output ] )
-
-#     coronalFunc = K.function([ myModel.layers[0].layers[2].layers[0].input , K.learning_phase()  ], 
-#                        [ myModel.layers[0].layers[2].layers[-1].output ] )
-
-#     mergeFunc = K.function([ myModel.layers[1].input , K.learning_phase()  ], 
-#                        [ myModel.layers[2].output ] ) 
-
-#     softmaxFunc = K.function([ myModel.layers[5].input , K.learning_phase()  ], 
-#                        [ myModel.layers[5].output ] )
-
-
-# else:
-
-#     print("no fork - not tested")
-
-
-#
-#
 #     `7MMF'        .g8""8q.     .g8""8q. `7MM"""Mq.
 #       MM        .dP'    `YM. .dP'    `YM. MM   `MM.
 #       MM        dM'      `MM dM'      `MM MM   ,M9
@@ -186,79 +136,37 @@ logits = []
 for i in range (dataFrameTest.shape[0]):
 
 
-    if fork:
+    if fork: 
 
-        #
-        #
-        #     `7MM"""Mq.`7MM"""Mq.  `7MM"""YMM  `7MM"""Yb. `7MMF' .g8"""bgd MMP""MM""YMM
-        #       MM   `MM. MM   `MM.   MM    `7    MM    `Yb. MM .dP'     `M P'   MM   `7
-        #       MM   ,M9  MM   ,M9    MM   d      MM     `Mb MM dM'       `      MM
-        #       MMmmdM9   MMmmdM9     MMmmMM      MM      MM MM MM               MM
-        #       MM        MM  YM.     MM   Y  ,   MM     ,MP MM MM.              MM
-        #       MM        MM   `Mb.   MM     ,M   MM    ,dP' MM `Mb.     ,'      MM
-        #     .JMML.    .JMML. .JMM..JMMmmmmMMM .JMMmmmdP' .JMML. `"bmmmd'     .JMML.
-        #
-        #
-
-        if mode == "2d":
-            # get predictions
-            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,imgSize,imgSize,1)  ] ) # , 
-                # x_test_s[i].reshape(1,imgSize,imgSize,1) , 
-                # x_test_c[i].reshape(1,imgSize,imgSize,1) ]  )
-            print (y_pred[0])
-            logits.append( y_pred[0] )
         if mode == "3d":
             # get predictions
-            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) ] ) #  , 
-                # x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
-                # x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
-            print (y_pred[0])
-            logits.append( y_pred[0] )
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
 
-
-
-        #
-        #
-        #     `7MM"""Yb. `7MM"""YMM  `7MN.   `7MF'.M"""bgd `7MM"""YMM
-        #       MM    `Yb. MM    `7    MMN.    M ,MI    "Y   MM    `7
-        #       MM     `Mb MM   d      M YMb   M `MMb.       MM   d     pd*"*b.
-        #       MM      MM MMmmMM      M  `MN. M   `YMMNq.   MMmmMM    (O)   j8
-        #       MM     ,MP MM   Y  ,   M   `MM.M .     `MM   MM   Y  ,     ,;j9
-        #       MM    ,dP' MM     ,M   M     YMM Mb     dM   MM     ,M  ,-='
-        #     .JMMmmmdP' .JMMmmmmMMM .JML.    YM P"Ybmmd"  .JMMmmmmMMM Ammmmmmm
-        #
-        #
-
-
-        # if mode == "2d":
-        #     # get the different ones
-        #     axial512 = axialFunc( [  x_test_a[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-        #     sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-        #     coronal512 = coronalFunc( [  x_test_c[i].reshape(1,imgSize,imgSize,1) , 0 ] )
-        # if mode == "3d":
-        #     axial512 = axialFunc( [  x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-        #     sagittal512 = sagittalFunc( [  x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-        #     coronal512 = coronalFunc( [  x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ] )
-
-        # # concat them
-        # concat = []
-        # concat.extend ( axial512[0][0].tolist() )
-        # concat.extend ( sagittal512[0][0].tolist() )
-        # concat.extend ( coronal512[0][0].tolist() )
-        # #
-        # concat = np.array(concat ,'float32').reshape(1,len(concat))
-        # # now do one last function
-        # preds = mergeFunc( [ concat , 0 ])
-        # print (   preds[0][0][0] ,  preds[0][0][1]   )
-        # #
-        # logitsBal = np.array( [ preds[0][0][0] ,  preds[0][0][1] ]  ) .reshape(1,2) # * zeroWeight  , * oneWeight 
-        # logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+        elif mode == "2d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,imgSize,imgSize,1) ,
+                x_test_s[i].reshape(1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,imgSize,imgSize,1) ]  )
 
     else:
 
-        print("no fork - not tested")
+        if mode == "3d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
+
+        elif mode == "2d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize,imgSize,1) ] )
 
 
+    print ( y_pred [0] )
+    # now after down with switching
+    logits.append( y_pred[0] )
+
+
+# after loop
 
 print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
 print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] )  )
@@ -271,46 +179,7 @@ np.save( "/home/ubuntu/output/" + RUN + "_test_logits.npy", logits )
 print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
 auc1 , auc2 = funcs.AUC(  y_test ,  logits )
 print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
-print ("wtf2")
 
-
-
-##############################################################################################################################################
-
-
-
-#     if fork:
-#         # get predictions
-#         y_pred = myModel.predict_on_batch ( [ clinical_test[i] , x_test_a[i] , x_test_s[i] , x_test_c[i] ]  )
-#     else:
-#         y_pred = myModel.predict_on_batch ( [ clinical_test[i] , x_test[i] ]  )
-
-#     # save raw logits
-#     rawLogits.extend( y_pred  ) 
-#     # group by patient - to get one prediction per patient only
-#     labelsOut,logitsOut = funcs.aggregate( y_test[i] , y_pred )
-#     #
-#     allLabels.extend(labelsOut)
-#     allLogits.extend(logitsOut)
-#     #
-
-
-# # save logits
-# np.save( "/home/ubuntu/output/" + RUN + "_test_logits_raw.npy", rawLogits )
-
-
-# allLabels = np.array(allLabels)
-# allLogits = np.array(allLogits)
-
-# print ("\nfinal labels,logits shape: " , allLabels.shape , allLogits.shape ) # 528
-
-
-# # get 2 auc's
-# print ("wtf1")
-# auc1 , auc2 = funcs.AUC(  allLabels ,  allLogits )
-# print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
-# # before appending, check if this auc is the highest in all the lsit
-# print ("wtf2")
 
 
 
