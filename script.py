@@ -18,19 +18,19 @@ from keras.utils.visualize_util import plot
 
 
 # current version
-RUN = "37"
+RUN = "44" 
 
 # you want 2d or 3d convolutions?
-mode = "3d"
+mode = "2d"
 
 # you want single architecture or 3-way architecture
 fork = False
 
 # final size should not be greater than 150
-finalSize = 110 
+finalSize = 150 
 
 # size of minipatch fed to net
-imgSize = 80 
+imgSize = 120
 
 # for 3d + fork , # of slices to take in each direction
 count = 3
@@ -45,7 +45,7 @@ krs.augmentTraining = True
 
 # others...
 batch_size = 64 
-nb_epoch = 2
+nb_epoch = 1024
 lr = 0.0001 
 
 # print 
@@ -138,6 +138,7 @@ with tf.device('/gpu:0'):
         model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) #  output here is 512*3 
         model.add(Dropout(0.5))
         model.add(Dense(512))
+        model.add(Activation('relu'))
         model.add(Dropout(0.5))
 
     else:

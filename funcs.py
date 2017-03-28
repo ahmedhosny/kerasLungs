@@ -197,6 +197,24 @@ def getXandY(dataFrame,imgSize):
     # clincical = np.array(clincical , 'float32'  )
     return arrList,y,zeros,ones # ,clincical
 
+def getX(dataFrame,imgSize):
+
+    arrList = []
+
+    for i in range (dataFrame.shape[0]):
+
+        npy =  "/home/ubuntu/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
+
+        arr = np.load(npy)
+
+        # X #
+        arrList.append (  arr )  
+
+    # after loop
+    arrList = np.array(arrList, 'float32')
+
+    return arrList
+
 
 
 #
@@ -223,10 +241,10 @@ def make2dConvModel(imgSize):
 
     model = Sequential()
 
-    model.add(Convolution2D(32, 7, 7, border_mode='valid',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
+    model.add(Convolution2D(32, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(64, 5, 5 , border_mode='valid' )) # 32
+    model.add(Convolution2D(64, 3, 3 , border_mode='valid' )) # 32
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
