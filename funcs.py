@@ -18,6 +18,7 @@ from keras import backend as K
 import random
 import tensorflow as tf
 from tensorflow.python.ops import nn
+from keras.layers.normalization import BatchNormalization
 K.set_image_dim_ordering('tf')
 
 
@@ -236,23 +237,28 @@ def makeClinicalModel():
     model.add(Dense( 3, input_dim=(3)) ) # 512
     return model
 
-def make2dConvModel(imgSize):
+def make2dConvModel(imgSize,regul):
+    # regul - norm - act
     #(samples, rows, cols, channels) if dim_ordering='tf'.
 
     model = Sequential()
 
-    model.add(Convolution2D(32, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize,imgSize,1] )) # 32
+    model.add(Convolution2D(32, 3, 3, border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(64, 3, 3 , border_mode='valid' )) # 32
+    model.add(Convolution2D(64, 3, 3 , border_mode='valid', activity_regularizer = regul  )) # 32
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
 
-    model.add(Convolution2D(128, 3, 3, border_mode='valid')) # 64
+    model.add(Convolution2D(128, 3, 3, border_mode='valid' , activity_regularizer = regul  )) # 64
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(128, 3, 3,  border_mode='valid')) # 64
+    model.add(Convolution2D(128, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
@@ -264,7 +270,8 @@ def make2dConvModel(imgSize):
     # model.add(Dropout(0.5))
 
     model.add(Flatten())
-    model.add(Dense(512)) # 512
+    model.add(Dense(512 , activity_regularizer = regul  )) # 512
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
     
@@ -278,28 +285,33 @@ def make3dConvModel(imgSize,count,fork,skip):
     model = Sequential()
 
     if fork:
-        model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] )) # 32
+        model.add(Convolution3D(48, 3, 3, 3, border_mode='same',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] )) # 32
     else:
-        model.add(Convolution3D(48, 2, 5, 5, border_mode='same',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] )) # 32
+        model.add(Convolution3D(48, 3, 3, 3, border_mode='same',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] )) # 32
 
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
 
-    model.add(Convolution3D(48, 2, 5, 5)) # 32
+    model.add(Convolution3D(48, 3, 3, 3)) # 32
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2))) ### 
+    model.add(MaxPooling3D(pool_size=(3, 3, 3))) ### 
     model.add(Dropout(0.25))
 
-    model.add(Convolution3D(96, 2, 5, 5, border_mode='same')) # 64
+    model.add(Convolution3D(96, 3, 3, 3, border_mode='same')) # 64
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
 
-    model.add(Convolution3D(96, 1, 5 , 5)) # 64
+    model.add(Convolution3D(96, 3, 3 , 3)) # 64
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 3, 3)))
+    model.add(MaxPooling3D(pool_size=(3, 3, 3)))
     model.add(Dropout(0.25))
 
 
     model.add(Flatten())
     model.add(Dense(512)) # 512
+    model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
     

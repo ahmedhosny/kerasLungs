@@ -7,8 +7,10 @@ from keras.utils import np_utils
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.visualize_util import plot
+from keras import regularizers
 
 
 # 2d + fork = axial,saggittal,coronal ( imgSize x imgSize )
@@ -18,7 +20,7 @@ from keras.utils.visualize_util import plot
 
 
 # current version
-RUN = "44" 
+RUN = "46" 
 
 # you want 2d or 3d convolutions?
 mode = "2d"
@@ -27,10 +29,10 @@ mode = "2d"
 fork = False
 
 # final size should not be greater than 150
-finalSize = 150 
+finalSize = 120 
 
 # size of minipatch fed to net
-imgSize = 120
+imgSize = 80
 
 # for 3d + fork , # of slices to take in each direction
 count = 3
@@ -43,10 +45,12 @@ skip = 2
 # random minipatch is done regardless. This bool controls flipping and rotation
 krs.augmentTraining = True
 
+regul = regularizers.l2(0.0000001)
+
 # others...
-batch_size = 64 
-nb_epoch = 1024
-lr = 0.0001 
+batch_size = 32 
+nb_epoch = 20000
+lr = 0.00001 
 
 # print 
 print ("training : run: " , RUN , " lr: " , lr)
@@ -130,9 +134,9 @@ with tf.device('/gpu:0'):
             model_C = funcs.make3dConvModel(imgSize,count,fork,skip) 
 
         elif mode == "2d":
-            model_A = funcs.make2dConvModel(imgSize)  
-            model_S = funcs.make2dConvModel(imgSize)  
-            model_C = funcs.make2dConvModel(imgSize)     
+            model_A = funcs.make2dConvModel(imgSize,regul)  
+            model_S = funcs.make2dConvModel(imgSize,regul)  
+            model_C = funcs.make2dConvModel(imgSize,regul)     
 
         # 
         model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) #  output here is 512*3 
@@ -147,14 +151,17 @@ with tf.device('/gpu:0'):
             model = funcs.make3dConvModel(imgSize, count ,fork,skip) # output here is 512
 
         elif mode == "2d":
-            model = funcs.make2dConvModel(imgSize) # output here is 512
+            model = funcs.make2dConvModel(imgSize,regul) # output here is 512
 
-        model.add(Dense(256))
+        model.add(Dense(256 , activity_regularizer = regul ))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
         model.add(Dropout(0.5))
 
 
     # add last dense and softmax
-    model.add(Dense(nb_classes))
+    model.add(Dense(nb_classes , activity_regularizer = regul ))
+    model.add(BatchNormalization())
     model.add(Activation('softmax'))
 
     myOptimizer = keras.optimizers.Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)

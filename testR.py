@@ -132,8 +132,6 @@ myModel = model_from_json(loaded_model_json)
 myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 
 
-
-
 # make funcs
 # to befire last dense
 func1 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[16].output ] )

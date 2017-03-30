@@ -128,13 +128,18 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
         offsetArr = offsetPatch(arr, finalSize)
 
         # get random miniPatch 
-        offstX = random.randint(0,finalSize-imgSize)
-        offstY = random.randint(0,finalSize-imgSize)
-        offstZ = random.randint(0,finalSize-imgSize)
-        miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
+        # offstX = random.randint(0,finalSize-imgSize)
+        # offstY = random.randint(0,finalSize-imgSize)
+        # offstZ = random.randint(0,finalSize-imgSize)
+        # miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
+
+        rand = random.randint(0,8)
+        miniPatch = getMiniPatch( rand , offsetArr , imgSize )
 
         # reshape to make one channel
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+
+
 
         # if single and mode is 3d, lets slim down the cube a bit
         if not fork and mode == "3d":
@@ -158,14 +163,14 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
             if flipBoolrl:
                 miniPatch =  miniPatch[:,:,::-1]
 
-            # rotation
-            angleList = [-180,-90,0,90,180]
-            randAng = angleList [ random.randint(0,4) ]
-            theta = np.pi / 180 *  randAng # 
-            # option 1 :  np.random.uniform(-180, 180) 
-            # option 2 : randAng 
+            # # rotation
+            # angleList = [-180,-90,0,90,180]
+            # randAng = angleList [ random.randint(0,4) ]
+            # theta = np.pi / 180 *  randAng # 
+            # # option 1 :  np.random.uniform(-180, 180) 
+            # # option 2 : randAng 
             
-            miniPatch = applyRotation(miniPatch,theta) 
+            # miniPatch = applyRotation(miniPatch,theta) 
 
             # OTHER AUGMENTATIONS COME HERE .....
 
