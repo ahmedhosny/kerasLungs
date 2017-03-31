@@ -6,6 +6,7 @@ import scipy.ndimage as ndi
 import random 
 from keras.utils import np_utils
 import scipy.misc
+import time
 
 #
 #
@@ -123,18 +124,20 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
     counter = 0
     # loop through each patient.
     for arr in iter(x_train):
+        #
 
+        
         # offset array to get a smaller one
         offsetArr = offsetPatch(arr, finalSize)
 
         # get random miniPatch 
-        # offstX = random.randint(0,finalSize-imgSize)
-        # offstY = random.randint(0,finalSize-imgSize)
-        # offstZ = random.randint(0,finalSize-imgSize)
-        # miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
+        offstX = random.randint(0,finalSize-imgSize)
+        offstY = random.randint(0,finalSize-imgSize)
+        offstZ = random.randint(0,finalSize-imgSize)
+        miniPatch = offsetArr[offstX:imgSize+offstX,offstY:imgSize+offstY,offstZ:imgSize+offstZ]
 
-        rand = random.randint(0,8)
-        miniPatch = getMiniPatch( rand , offsetArr , imgSize )
+        # rand = random.randint(0,8)
+        # miniPatch = getMiniPatch( rand , offsetArr , imgSize )
 
         # reshape to make one channel
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
@@ -169,8 +172,15 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
             # theta = np.pi / 180 *  randAng # 
             # # option 1 :  np.random.uniform(-180, 180) 
             # # option 2 : randAng 
-            
             # miniPatch = applyRotation(miniPatch,theta) 
+
+            # alternate faster numpy rotation
+            # uses numpy 1.12.1
+            # posotive is counter-clockwise , negative is clockwise .. but same thing..
+            # 0 = no rotation
+            # list to choose from [0,1,2,3]
+            miniPatch = np.rot90(miniPatch , k= random.randint(0,3) , axes=(1,2) )
+
 
             # OTHER AUGMENTATIONS COME HERE .....
 
@@ -213,6 +223,7 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
 
             elif mode == "2d":
                 arr_list.append (  miniPatch [mid,:,:] ) # only axial
+
 
     #
     # AFTER LOOP 

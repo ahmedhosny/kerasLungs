@@ -246,6 +246,9 @@ def make2dConvModel(imgSize,regul):
     model.add(Convolution2D(32, 3, 3, border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(Activation('relu'))
+    ##### for figure only
+    # model.add(MaxPooling2D(pool_size=(3, 3))) ### 
+    # model.add(Dropout(0.25))
 
     model.add(Convolution2D(64, 3, 3 , border_mode='valid', activity_regularizer = regul  )) # 32
     model.add(BatchNormalization())
@@ -291,6 +294,7 @@ def make3dConvModel(imgSize,count,fork,skip):
 
     model.add(BatchNormalization())
     model.add(Activation('relu'))
+
 
     model.add(Convolution3D(48, 3, 3, 3)) # 32
     model.add(BatchNormalization())
