@@ -37,6 +37,99 @@ K.set_image_dim_ordering('tf')
 #
 #
 
+def manageDataFramesEqually():
+    trainList = ["nsclc_rt"] 
+    validateList = ["lung1"] 
+    testList = ["lung2"]
+
+    dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+    dataFrame = dataFrame [ 
+        ( pd.notnull( dataFrame["pathToData"] ) ) &
+        ( pd.notnull( dataFrame["pathToMask"] ) ) &
+        ( pd.notnull( dataFrame["stackMin"] ) ) &
+        ( pd.isnull( dataFrame["patch_failed"] ) ) &
+        # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+        ( pd.notnull( dataFrame["surv2yr"] ) )  &
+        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+        ( pd.notnull( dataFrame["stage"] ) ) 
+        # ( pd.notnull( dataFrame["age"] ) )  
+        ]
+   
+    dataFrame = dataFrame.reset_index(drop=True)
+    
+    ###### FIX ALL
+    
+    #1# clean histology - remove smallcell and other
+    # histToInclude - only NSCLC
+    histToInclude = [1.0,2.0,3.0,4.0]
+    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+
+    
+    #2# use 1,2,3 stages
+    stageToInclude = [1.0,2.0,3.0]
+    dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+    print ("all patients: " , dataFrame.shape)
+
+        
+    ###### GET TRAINING  
+
+    dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+    #3# type of treatment - use only radio or chemoRadio - use .npy file
+    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+    dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+    #4# (rt only) use all causes of death
+    # not implemented
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     print ("train patients " , dataFrameTrain.shape)
+    
+    #### GET VAL
+    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+#     print ("validate patients : " , dataFrameValidate.shape)   
+    
+    ##### GET TEST
+    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+#     print ("test size : " , dataFrameTest.shape)
+    
+    # put all, shuffle then reset index
+    dataFrame = pd.concat ( [  dataFrameTrain , dataFrameValidate , dataFrameTest  ]   )
+    dataFrame = dataFrame.sample( frac=1 , random_state = 245 ) # this random seed gives ok class balance in training
+    dataFrame = dataFrame.reset_index(drop=True)
+#     print ("all together : " , dataFrame.shape) 
+    
+    # split
+    
+    dataFrameTrain, dataFrameValidate, dataFrameTest = np.split(dataFrame,
+                                                                [int(.75*len(dataFrame)), int(.83*len(dataFrame))])
+    
+    
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+    print (  "zeros: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 0.0  ] )   ) 
+    print (  "ones: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 1.0  ] )   )   
+    print ("train patients " , dataFrameTrain.shape)
+    
+    #### GET VAL
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    print (  "zeros: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 0.0  ] )   ) 
+    print (  "ones: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 1.0  ] )   ) 
+    print ("validate patients : " , dataFrameValidate.shape)   
+    
+    ##### GET TEST
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+    print (  "zeros: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 0.0  ] )   ) 
+    print (  "ones: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 1.0  ] )   ) 
+    print ("test size : " , dataFrameTest.shape)
+    
+    
+
+    return dataFrameTrain, dataFrameValidate,dataFrameTest
+
+    
+
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
     validateList = ["lung1"] # leave empty
@@ -102,14 +195,18 @@ def manageDataFrames():
     if thirty % 2 != 0:
         thirty = thirty + 1
 
+
+
     # get 0's and 1's.
     zero = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 0.0)  ]
     one = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 1.0)  ]
 
+    print ( zero.shape , one.shape )
     # split to train and val
     half = int(thirty/2.0)
 
     trueList = [True for i in range (half)]
+
     #
     zeroFalseList = [False for i in range (zero.shape[0] - half )]
     zero_msk = trueList + zeroFalseList
@@ -124,12 +221,13 @@ def manageDataFrames():
     one_msk = np.array(one_msk)
 
 
+
     # TRAIN
-    zero_test = zero[~zero_msk]
-    one_test = one[~one_msk]
+    zero_train = zero[~zero_msk]
+    one_train = one[~one_msk]
     dataFrameTrain = pd.DataFrame()
-    dataFrameTrain = dataFrameTrain.append(zero_test)
-    dataFrameTrain = dataFrameTrain.append(one_test)
+    dataFrameTrain = dataFrameTrain.append(zero_train)
+    dataFrameTrain = dataFrameTrain.append(one_train)
     dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 42 )
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
     print ('final - train size:' , dataFrameTrain.shape)
@@ -150,6 +248,7 @@ def manageDataFrames():
     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
     dataFrameTest = dataFrameTest.reset_index(drop=True)
     print ("final - test size : " , dataFrameTest.shape)
+
     
 
     return dataFrameTrain,dataFrameValidate,dataFrameTest
@@ -386,7 +485,7 @@ class Histories(keras.callbacks.Callback):
             json_file.write(model_json)
 
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFramesEqually()
         #
         x_val,y_val,zeros,ones =  getXandY(dataFrameValidate,imgSize)
         print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones ) 

@@ -8,7 +8,7 @@ from keras import backend as K
 
 
 # current version
-RUN = "39"
+RUN = "48"
 # you want 2d or 3d convolutions?
 mode = "2d"
 # you want single architecture or 3-way architecture
@@ -41,7 +41,7 @@ print ("training : run: " , RUN )
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #
 #
@@ -100,11 +100,11 @@ x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
 
 if fork:
     # lets get the 3 orientations
-    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test,finalSize,imgSize,count,mode,fork,skip)
+    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
     print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
 
 else:
-    x_test = krs.splitValTest(x_test,finalSize,imgSize,count,mode,fork,skip)
+    x_test = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
     print ("final val data:" , x_test.shape)
 
 
@@ -133,10 +133,10 @@ myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 
 
 # make funcs
-# to befire last dense
-func1 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[16].output ] )
-# to last dense
-func2 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[18].output ] )
+# to befire last dense - size 256
+func1 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[21].output ] )
+# to last dense - size 2
+func2 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[25].output ] )
 
 
 func1List = []
@@ -189,7 +189,6 @@ for i in range ( func1List.shape[0] ):
 
 for i in range ( func2List.shape[0] ):
     dataFrameTest['dense2_' + str (i)] = func2List[i]
-
 
 
 #

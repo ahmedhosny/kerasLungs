@@ -20,7 +20,7 @@ from keras import regularizers
 
 
 # current version
-RUN = "49" 
+RUN = "50" 
 
 # you want 2d or 3d convolutions?
 mode = "2d"
@@ -49,8 +49,8 @@ regul = regularizers.l2(0.0000001)
 
 # others...
 batch_size = 32 
-nb_epoch = 300000
-lr = 0.000001 
+nb_epoch = 500000
+lr = 0.00001 
 
 # print 
 print ("training : run: " , RUN , " lr: " , lr)
@@ -91,7 +91,7 @@ funcs.skip = skip
 #
 
 #1# get dataframnes
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #2# get data
 x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)

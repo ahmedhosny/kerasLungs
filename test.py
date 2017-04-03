@@ -26,9 +26,6 @@ skip = 2
 # print 
 print ("training : run: " , RUN )
 
-
-
-
 #
 #
 #       .g8"""bgd `7MM"""YMM MMP""MM""YMM     `7MM"""Yb.      db   MMP""MM""YMM   db
@@ -41,7 +38,7 @@ print ("training : run: " , RUN )
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #
 #
@@ -64,8 +61,6 @@ zeroWeight = ones / ((ones+zeros)*1.0)
 oneWeight = zeros / ((ones+zeros)*1.0)
 print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 
-
-
 #
 #     MMP""MM""YMM `7MM"""YMM   .M"""bgd MMP""MM""YMM
 #     P'   MM   `7   MM    `7  ,MI    "Y P'   MM   `7
@@ -76,9 +71,11 @@ print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 #        .JMML.    .JMMmmmmMMM P"Ybmmd"     .JMML.
 #
 
+valOrTest = dataFrameTest # dataFrameValidate #  
 
-x_test,y_test,zeros,ones =  funcs.getXandY(dataFrameTest,imgSize)
+x_test,y_test,zeros,ones =  funcs.getXandY(valOrTest,imgSize)  
 print ("test data:" , x_test.shape,  y_test.shape  ) 
+print ("zeros: " , zeros , "ones: " , ones)
 
 # center and standardize
 x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
@@ -86,11 +83,11 @@ x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
 
 if fork:
     # lets get the 3 orientations
-    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test,finalSize,imgSize,count,mode,fork,skip)
+    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
     print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
 
 else:
-    x_test = krs.splitValTest(x_test,finalSize,imgSize,count,mode,fork,skip)
+    x_test = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
     print ("final val data:" , x_test.shape)
 
 
@@ -133,7 +130,7 @@ myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
 
 logits = []
 #
-for i in range (dataFrameTest.shape[0]):
+for i in range (valOrTest.shape[0]): 
 
 
     if fork: 
@@ -161,7 +158,7 @@ for i in range (dataFrameTest.shape[0]):
             y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize,imgSize,1) ] )
 
 
-    print ( y_pred [0] )
+    print ( y_pred [0][0] , y_pred [0][1] , int( valOrTest.surv2yr[i] ) )  
     # now after down with switching
     logits.append( y_pred[0] )
 
@@ -176,7 +173,7 @@ logits = np.array(logits)
 # save logits
 np.save( "/home/ubuntu/output/" + RUN + "_test_logits.npy", logits )
 
-print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
+print ("logits: " , logits.shape , logits[0] , logits[30]  )
 auc1 , auc2 = funcs.AUC(  y_test ,  logits )
 print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
 
