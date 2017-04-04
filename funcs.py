@@ -37,6 +37,69 @@ K.set_image_dim_ordering('tf')
 #
 #
 
+# run 51
+def manageDataFramesRTn1():
+    trainList = ["nsclc_rt"] 
+    testList = ["lung1"]
+
+    dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+    dataFrame = dataFrame [ 
+        ( pd.notnull( dataFrame["pathToData"] ) ) &
+        ( pd.notnull( dataFrame["pathToMask"] ) ) &
+        ( pd.notnull( dataFrame["stackMin"] ) ) &
+        ( pd.isnull( dataFrame["patch_failed"] ) ) &
+        # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+        ( pd.notnull( dataFrame["surv2yr"] ) )  &
+        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+        ( pd.notnull( dataFrame["stage"] ) ) 
+        # ( pd.notnull( dataFrame["age"] ) )  
+        ]
+   
+    dataFrame = dataFrame.reset_index(drop=True)
+    
+    ###### FIX ALL
+    
+    #1# clean histology - remove smallcell and other
+    # histToInclude - only NSCLC
+    histToInclude = [1.0,2.0,3.0,4.0]
+    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+
+    
+    #2# use 1,2,3 stages
+    stageToInclude = [1.0,2.0,3.0]
+    dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+
+        
+    ###### GET TRAINING  
+
+    dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+    #3# type of treatment - use only radio or chemoRadio - use .npy file
+    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+    dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+    #4# (rt only) use all causes of death
+    # not implemented
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+
+    # now split into training and validation
+    dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 1 )
+    dataFrameTrain, dataFrameValidate = np.split(dataFrameTrain,[ int(.87*len(dataFrameTrain)) ])
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    
+    ##### GET TEST
+    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+    
+    print ("train patients " , dataFrameTrain.shape)
+    print ("validate patients : " , dataFrameValidate.shape) 
+    print ("test size : " , dataFrameTest.shape)
+
+    return dataFrameTrain, dataFrameValidate,dataFrameTest
+
+ # run 50   
 def manageDataFramesEqually():
     trainList = ["nsclc_rt"] 
     validateList = ["lung1"] 
@@ -128,7 +191,7 @@ def manageDataFramesEqually():
 
     return dataFrameTrain, dataFrameValidate,dataFrameTest
 
-    
+
 
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
@@ -485,7 +548,7 @@ class Histories(keras.callbacks.Callback):
             json_file.write(model_json)
 
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFramesEqually()
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFramesRTn1()
         #
         x_val,y_val,zeros,ones =  getXandY(dataFrameValidate,imgSize)
         print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones ) 

@@ -20,7 +20,7 @@ from keras import regularizers
 
 
 # current version
-RUN = "50" 
+RUN = "51" 
 
 # you want 2d or 3d convolutions?
 mode = "2d"
@@ -91,7 +91,7 @@ funcs.skip = skip
 #
 
 #1# get dataframnes
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesRTn1()
 
 #2# get data
 x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
