@@ -9,7 +9,7 @@ from sklearn.metrics import roc_curve, auc
 from keras.utils import np_utils
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout, Activation, Flatten , advanced_activations
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import Convolution2D, MaxPooling2D, Convolution3D , MaxPooling3D
 from sklearn.metrics import roc_auc_score
@@ -20,9 +20,6 @@ import tensorflow as tf
 from tensorflow.python.ops import nn
 from keras.layers.normalization import BatchNormalization
 K.set_image_dim_ordering('tf')
-
-
-
 
 
 #
@@ -36,162 +33,6 @@ K.set_image_dim_ordering('tf')
 #     .JMMmmmdP'.AMA.   .AMMA..JMML..AMA.   .AMMA.
 #
 #
-
-# run 51
-def manageDataFramesRTn1():
-    trainList = ["nsclc_rt"] 
-    testList = ["lung1"]
-
-    dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
-    dataFrame = dataFrame [ 
-        ( pd.notnull( dataFrame["pathToData"] ) ) &
-        ( pd.notnull( dataFrame["pathToMask"] ) ) &
-        ( pd.notnull( dataFrame["stackMin"] ) ) &
-        ( pd.isnull( dataFrame["patch_failed"] ) ) &
-        # ( pd.notnull( dataFrame["surv1yr"] ) )  &
-        ( pd.notnull( dataFrame["surv2yr"] ) )  &
-        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
-        ( pd.notnull( dataFrame["stage"] ) ) 
-        # ( pd.notnull( dataFrame["age"] ) )  
-        ]
-   
-    dataFrame = dataFrame.reset_index(drop=True)
-    
-    ###### FIX ALL
-    
-    #1# clean histology - remove smallcell and other
-    # histToInclude - only NSCLC
-    histToInclude = [1.0,2.0,3.0,4.0]
-    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
-    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
-    dataFrame = dataFrame.reset_index(drop=True)
-
-    
-    #2# use 1,2,3 stages
-    stageToInclude = [1.0,2.0,3.0]
-    dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
-    dataFrame = dataFrame.reset_index(drop=True)
-
-        
-    ###### GET TRAINING  
-
-    dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
-    #3# type of treatment - use only radio or chemoRadio - use .npy file
-    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
-    dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
-    #4# (rt only) use all causes of death
-    # not implemented
-    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-
-    # now split into training and validation
-    dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 1 )
-    dataFrameTrain, dataFrameValidate = np.split(dataFrameTrain,[ int(.87*len(dataFrameTrain)) ])
-    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    
-    ##### GET TEST
-    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
-    dataFrameTest = dataFrameTest.reset_index(drop=True)
-    
-    print ("train patients " , dataFrameTrain.shape)
-    print ("validate patients : " , dataFrameValidate.shape) 
-    print ("test size : " , dataFrameTest.shape)
-
-    return dataFrameTrain, dataFrameValidate,dataFrameTest
-
- # run 50   
-def manageDataFramesEqually():
-    trainList = ["nsclc_rt"] 
-    validateList = ["lung1"] 
-    testList = ["lung2"]
-
-    dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
-    dataFrame = dataFrame [ 
-        ( pd.notnull( dataFrame["pathToData"] ) ) &
-        ( pd.notnull( dataFrame["pathToMask"] ) ) &
-        ( pd.notnull( dataFrame["stackMin"] ) ) &
-        ( pd.isnull( dataFrame["patch_failed"] ) ) &
-        # ( pd.notnull( dataFrame["surv1yr"] ) )  &
-        ( pd.notnull( dataFrame["surv2yr"] ) )  &
-        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
-        ( pd.notnull( dataFrame["stage"] ) ) 
-        # ( pd.notnull( dataFrame["age"] ) )  
-        ]
-   
-    dataFrame = dataFrame.reset_index(drop=True)
-    
-    ###### FIX ALL
-    
-    #1# clean histology - remove smallcell and other
-    # histToInclude - only NSCLC
-    histToInclude = [1.0,2.0,3.0,4.0]
-    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
-    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
-    dataFrame = dataFrame.reset_index(drop=True)
-
-    
-    #2# use 1,2,3 stages
-    stageToInclude = [1.0,2.0,3.0]
-    dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
-    dataFrame = dataFrame.reset_index(drop=True)
-    print ("all patients: " , dataFrame.shape)
-
-        
-    ###### GET TRAINING  
-
-    dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
-    #3# type of treatment - use only radio or chemoRadio - use .npy file
-    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
-    dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
-    #4# (rt only) use all causes of death
-    # not implemented
-    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-#     print ("train patients " , dataFrameTrain.shape)
-    
-    #### GET VAL
-    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
-    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-#     print ("validate patients : " , dataFrameValidate.shape)   
-    
-    ##### GET TEST
-    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
-    dataFrameTest = dataFrameTest.reset_index(drop=True)
-#     print ("test size : " , dataFrameTest.shape)
-    
-    # put all, shuffle then reset index
-    dataFrame = pd.concat ( [  dataFrameTrain , dataFrameValidate , dataFrameTest  ]   )
-    dataFrame = dataFrame.sample( frac=1 , random_state = 245 ) # this random seed gives ok class balance in training
-    dataFrame = dataFrame.reset_index(drop=True)
-#     print ("all together : " , dataFrame.shape) 
-    
-    # split
-    
-    dataFrameTrain, dataFrameValidate, dataFrameTest = np.split(dataFrame,
-                                                                [int(.75*len(dataFrame)), int(.83*len(dataFrame))])
-    
-    
-    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    print (  "zeros: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 0.0  ] )   ) 
-    print (  "ones: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 1.0  ] )   )   
-    print ("train patients " , dataFrameTrain.shape)
-    
-    #### GET VAL
-    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    print (  "zeros: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 0.0  ] )   ) 
-    print (  "ones: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 1.0  ] )   ) 
-    print ("validate patients : " , dataFrameValidate.shape)   
-    
-    ##### GET TEST
-    dataFrameTest = dataFrameTest.reset_index(drop=True)
-    print (  "zeros: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 0.0  ] )   ) 
-    print (  "ones: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 1.0  ] )   ) 
-    print ("test size : " , dataFrameTest.shape)
-    
-    
-
-    return dataFrameTrain, dataFrameValidate,dataFrameTest
-
-
 
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
@@ -331,7 +172,7 @@ def getXandY(dataFrame,imgSize):
     for i in range (dataFrame.shape[0]):
 
         npy =  "/home/ubuntu/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
-
+        # npy =  "~/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
         arr = np.load(npy)
 
         # X #
@@ -407,24 +248,24 @@ def make2dConvModel(imgSize,regul):
 
     model.add(Convolution2D(32, 3, 3, border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     ##### for figure only
     # model.add(MaxPooling2D(pool_size=(3, 3))) ### 
     # model.add(Dropout(0.25))
 
-    model.add(Convolution2D(64, 3, 3 , border_mode='valid', activity_regularizer = regul  )) # 32
+    model.add(Convolution2D(64, 3, 3 , border_mode='valid', activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
 
-    model.add(Convolution2D(128, 3, 3, border_mode='valid' , activity_regularizer = regul  )) # 64
+    model.add(Convolution2D(128, 3, 3, border_mode='valid' , activity_regularizer = regul )) # 64
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
     model.add(Convolution2D(128, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
 
@@ -435,9 +276,9 @@ def make2dConvModel(imgSize,regul):
     # model.add(Dropout(0.5))
 
     model.add(Flatten())
-    model.add(Dense(512 , activity_regularizer = regul  )) # 512
+    model.add(Dense(512 , activity_regularizer = regul )) # 512
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(0.5))
     
     return model
@@ -497,6 +338,15 @@ def make3dConvModel(imgSize,count,fork,skip):
 #
 #
 
+# new normalization method
+# get mean and std from training
+def centerAndNormalize(arr):
+    out = arr
+    #
+    out -= 1000.0
+    out /= 2000.0
+    #
+    return out
 
 # get mean and std from training
 def centerAndStandardizeTraining(arr):
@@ -529,10 +379,35 @@ def AUC(test_labels,test_prediction):
     roc_auc = dict()
     for i in range(n_classes):
         # ( actual labels, predicted probabilities )
-        fpr[i], tpr[i], _ = roc_curve(test_labels[:, i], test_prediction[:, i]) # flip here
+        fpr[i], tpr[i], _ = roc_curve(test_labels[:, i], test_prediction[:, i] ) # flip here
         roc_auc[i] = auc(fpr[i], tpr[i])
 
     return round(roc_auc[0],3) , round(roc_auc[1],3)
+
+def AUC(test_labels,test_prediction):
+    n_classes = 2
+    # http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#sphx-glr-auto-examples-model-selection-plot-roc-py
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(n_classes):
+        # ( actual labels, predicted probabilities )
+        fpr[i], tpr[i], _ = roc_curve(test_labels[:, i], test_prediction[:, i] ) # flip here
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    return round(roc_auc[0],3) , round(roc_auc[1],3)
+
+def AUCalt( test_labels , test_prediction):
+    # convert to non-categorial
+    test_prediction = np.array( [ x[1] for x in test_prediction   ])
+    test_labels = np.array( [ 0 if x[0]==1 else 1 for x in test_labels   ])
+    # get rates
+    fpr, tpr, thresholds = roc_curve(test_labels, test_prediction, pos_label=1)
+    # get auc
+    myAuc = auc(fpr, tpr)
+    return myAuc
+
 
 
 class Histories(keras.callbacks.Callback):
@@ -548,15 +423,15 @@ class Histories(keras.callbacks.Callback):
             json_file.write(model_json)
 
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFramesRTn1()
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
         #
         x_val,y_val,zeros,ones =  getXandY(dataFrameValidate,imgSize)
         print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones ) 
         self.dataFrameValidate = dataFrameValidate
         self.y_val = y_val
         # lets do featurewiseCenterAndStd - its still a cube at this point
-        x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
-
+        # x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
+        x_val_cs = centerAndNormalize(x_val)
 
         if fork:
             # lets get the 3 orientations
@@ -579,7 +454,6 @@ class Histories(keras.callbacks.Callback):
         return
 
     def on_epoch_end(self, epoch, logs={}):
-
 
 
         logits = []
@@ -621,19 +495,21 @@ class Histories(keras.callbacks.Callback):
 
         logits = np.array(logits)
 
-        print ("logits: " , logits.shape , logits[0] , logits[30]   )
+        print ("logits: " , logits.shape , logits[0]    )
         auc1 , auc2 = AUC(  self.y_val ,  logits )
         print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
         print ("wtf2")
 
         # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
-        if all(auc1>i for i in self.auc):
-            self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
-            print("Saved model to disk")
-            # save model and json representation
-            model_json = self.model.to_json()
-            with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
-                json_file.write(model_json)
+        #
+        if epoch > 500:
+            if all(auc1>i for i in self.auc):
+                self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+                print("Saved model to disk")
+                # save model and json representation
+                model_json = self.model.to_json()
+                with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+                    json_file.write(model_json)
 
         # append and save train loss
         self.train_loss.append(logs.get('loss'))
@@ -721,3 +597,229 @@ class Histories(keras.callbacks.Callback):
 # #
 # logitsBal = np.array( [ preds[0][0][0]  ,  preds[0][0][1]  ]  ) .reshape(1,2)   # * zeroWeight -  * oneWeight
 # logits.append(  softmaxFunc(   [ logitsBal     , 0 ]) [0].reshape(2)  )
+
+# run 54
+# def manageDataFramesLung1():
+#     trainList = ["lung2"] 
+#     testList = ["nsclc_rt"] # or lung1 # needs fixing
+
+#     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+#     dataFrame = dataFrame [ 
+#         ( pd.notnull( dataFrame["pathToData"] ) ) &
+#         ( pd.notnull( dataFrame["pathToMask"] ) ) &
+#         ( pd.notnull( dataFrame["stackMin"] ) ) &
+#         ( pd.isnull( dataFrame["patch_failed"] ) ) &
+#         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+#         ( pd.notnull( dataFrame["surv2yr"] ) )  &
+#         ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+#         ( pd.notnull( dataFrame["stage"] ) ) 
+#         # ( pd.notnull( dataFrame["age"] ) )  
+#         ]
+   
+#     dataFrame = dataFrame.reset_index(drop=True)
+    
+#     ###### FIX ALL
+    
+#     #1# clean histology - remove smallcell and other
+#     # histToInclude - only NSCLC
+#     histToInclude = [1.0,2.0,3.0,4.0]
+#     # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+#     dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+
+    
+#     #2# use 1,2,3 stages
+#     stageToInclude = [1.0,2.0,3.0]
+#     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+
+        
+#     ###### GET TRAINING  
+
+#     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+
+#     # now split into training and validation
+#     dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 1 )
+#     dataFrameTrain, dataFrameValidate = np.split(dataFrameTrain,[ int(.80*len(dataFrameTrain)) ])
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+
+
+
+    
+#     ##### GET TEST
+#     # for RT
+#     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+#     #3# type of treatment - use only radio or chemoRadio - use .npy file
+#     chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+#     dataFrameTest = dataFrameTest [ dataFrameTest["patient"].isin(chemoRadio) ]
+#     #4# (rt only) use all causes of death
+#     # not implemented
+#     dataFrameTest = dataFrameTest.reset_index(drop=True)
+
+#     # for lung2
+#     # dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+#     # dataFrameTest = dataFrameTest.reset_index(drop=True)
+    
+#     print ("train patients " , dataFrameTrain.shape)
+#     print ("validate patients : " , dataFrameValidate.shape) 
+#     print ("test size : " , dataFrameTest.shape)
+
+#     return dataFrameTrain, dataFrameValidate,dataFrameTest
+
+
+# run 50   
+# def manageDataFramesEqually():
+#     trainList = ["nsclc_rt"] 
+#     validateList = ["lung1"] 
+#     testList = ["lung2"]
+
+#     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+#     dataFrame = dataFrame [ 
+#         ( pd.notnull( dataFrame["pathToData"] ) ) &
+#         ( pd.notnull( dataFrame["pathToMask"] ) ) &
+#         ( pd.notnull( dataFrame["stackMin"] ) ) &
+#         ( pd.isnull( dataFrame["patch_failed"] ) ) &
+#         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+#         ( pd.notnull( dataFrame["surv2yr"] ) )  &
+#         ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+#         ( pd.notnull( dataFrame["stage"] ) ) 
+#         # ( pd.notnull( dataFrame["age"] ) )  
+#         ]
+   
+#     dataFrame = dataFrame.reset_index(drop=True)
+    
+#     ###### FIX ALL
+    
+#     #1# clean histology - remove smallcell and other
+#     # histToInclude - only NSCLC
+#     histToInclude = [1.0,2.0,3.0,4.0]
+#     # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+#     dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+
+    
+#     #2# use 1,2,3 stages
+#     stageToInclude = [1.0,2.0,3.0]
+#     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+#     print ("all patients: " , dataFrame.shape)
+
+        
+#     ###### GET TRAINING  
+
+#     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+#     #3# type of treatment - use only radio or chemoRadio - use .npy file
+#     chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+#     dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+#     #4# (rt only) use all causes of death
+#     # not implemented
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+# #     print ("train patients " , dataFrameTrain.shape)
+    
+#     #### GET VAL
+#     dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
+#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+# #     print ("validate patients : " , dataFrameValidate.shape)   
+    
+#     ##### GET TEST
+#     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+#     dataFrameTest = dataFrameTest.reset_index(drop=True)
+# #     print ("test size : " , dataFrameTest.shape)
+    
+#     # put all, shuffle then reset index
+#     dataFrame = pd.concat ( [  dataFrameTrain , dataFrameValidate , dataFrameTest  ]   )
+#     dataFrame = dataFrame.sample( frac=1 , random_state = 245 ) # this random seed gives ok class balance in training
+#     dataFrame = dataFrame.reset_index(drop=True)
+# #     print ("all together : " , dataFrame.shape) 
+    
+#     # split
+    
+#     dataFrameTrain, dataFrameValidate, dataFrameTest = np.split(dataFrame,
+#                                                                 [int(.75*len(dataFrame)), int(.83*len(dataFrame))])
+    
+    
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     print (  "zeros: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 0.0  ] )   ) 
+#     print (  "ones: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 1.0  ] )   )   
+#     print ("train patients " , dataFrameTrain.shape)
+    
+#     #### GET VAL
+#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+#     print (  "zeros: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 0.0  ] )   ) 
+#     print (  "ones: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 1.0  ] )   ) 
+#     print ("validate patients : " , dataFrameValidate.shape)   
+    
+#     ##### GET TEST
+#     dataFrameTest = dataFrameTest.reset_index(drop=True)
+#     print (  "zeros: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 0.0  ] )   ) 
+#     print (  "ones: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 1.0  ] )   ) 
+#     print ("test size : " , dataFrameTest.shape)
+    
+    
+
+#     return dataFrameTrain, dataFrameValidate,dataFrameTest
+
+
+# run 51
+# def manageDataFramesRTn1():
+#     trainList = ["nsclc_rt"] 
+#     testList = ["lung2"] # or lung2
+
+#     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+#     dataFrame = dataFrame [ 
+#         ( pd.notnull( dataFrame["pathToData"] ) ) &
+#         ( pd.notnull( dataFrame["pathToMask"] ) ) &
+#         ( pd.notnull( dataFrame["stackMin"] ) ) &
+#         ( pd.isnull( dataFrame["patch_failed"] ) ) &
+#         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+#         ( pd.notnull( dataFrame["surv2yr"] ) )  &
+#         ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+#         ( pd.notnull( dataFrame["stage"] ) ) 
+#         # ( pd.notnull( dataFrame["age"] ) )  
+#         ]
+   
+#     dataFrame = dataFrame.reset_index(drop=True)
+    
+#     ###### FIX ALL
+    
+#     #1# clean histology - remove smallcell and other
+#     # histToInclude - only NSCLC
+#     histToInclude = [1.0,2.0,3.0,4.0]
+#     # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+#     dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+
+    
+#     #2# use 1,2,3 stages
+#     stageToInclude = [1.0,2.0,3.0]
+#     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+
+        
+#     ###### GET TRAINING  
+
+#     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+#     #3# type of treatment - use only radio or chemoRadio - use .npy file
+#     chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+#     dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+#     #4# (rt only) use all causes of death
+#     # not implemented
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+
+#     # now split into training and validation
+#     dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 1 )
+#     dataFrameTrain, dataFrameValidate = np.split(dataFrameTrain,[ int(.87*len(dataFrameTrain)) ])
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    
+#     ##### GET TEST
+#     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+#     dataFrameTest = dataFrameTest.reset_index(drop=True)
+    
+#     print ("train patients " , dataFrameTrain.shape)
+#     print ("validate patients : " , dataFrameValidate.shape) 
+#     print ("test size : " , dataFrameTest.shape)
+
+#     return dataFrameTrain, dataFrameValidate,dataFrameTest

@@ -8,7 +8,7 @@ from keras import backend as K
 
 
 # current version
-RUN = "51"
+RUN = "55"
 # you want 2d or 3d convolutions?
 mode = "2d"
 # you want single architecture or 3-way architecture
@@ -41,7 +41,7 @@ print ("training : run: " , RUN )
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesRTn1()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 #
 #
@@ -55,14 +55,14 @@ dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesRTn1()
 #
 #
 
-x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
-mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
-print ( "mean and std shape: " ,mean.shape,std.shape )
+# x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
+# mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
+# print ( "mean and std shape: " ,mean.shape,std.shape )
 
-print ("zeros: " , zeros , "ones: " , ones)
-zeroWeight = ones / ((ones+zeros)*1.0)
-oneWeight = zeros / ((ones+zeros)*1.0)
-print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
+# print ("zeros: " , zeros , "ones: " , ones)
+# zeroWeight = ones / ((ones+zeros)*1.0)
+# oneWeight = zeros / ((ones+zeros)*1.0)
+# print ("zeroWeight: " , zeroWeight , "oneWeight: " , oneWeight)
 
 
 
@@ -95,8 +95,8 @@ x_test =  funcs.getX(dataFrameTest,imgSize)
 print ("test data:" , x_test.shape ) 
 
 # center and standardize
-x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
-
+# x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
+x_test_cs = funcs.centerAndNormalize(x_test)
 
 if fork:
     # lets get the 3 orientations

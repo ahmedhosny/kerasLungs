@@ -6,7 +6,7 @@ import keras
 from keras.utils import np_utils
 import tensorflow as tf
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout, Activation, Flatten , advanced_activations
 from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.visualize_util import plot
@@ -20,7 +20,7 @@ from keras import regularizers
 
 
 # current version
-RUN = "51" 
+RUN = "55" 
 
 # you want 2d or 3d convolutions?
 mode = "2d"
@@ -45,6 +45,7 @@ skip = 2
 # random minipatch is done regardless. This bool controls flipping and rotation
 krs.augmentTraining = True
 
+LRELUalpha = 0.3
 regul = regularizers.l2(0.0000001)
 
 # others...
@@ -75,8 +76,7 @@ funcs.count = count
 funcs.finalSize = finalSize
 funcs.fork = fork
 funcs.skip = skip
-
-
+funcs.LRELUalpha = LRELUalpha
 
 #
 #
@@ -91,7 +91,7 @@ funcs.skip = skip
 #
 
 #1# get dataframnes
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesRTn1()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 #2# get data
 x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
@@ -142,7 +142,7 @@ with tf.device('/gpu:0'):
         model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) #  output here is 512*3 
         model.add(Dropout(0.5))
         model.add(Dense(512))
-        model.add(Activation('relu'))
+        model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
         model.add(Dropout(0.5))
 
     else:
@@ -155,7 +155,7 @@ with tf.device('/gpu:0'):
 
         model.add(Dense(256 , activity_regularizer = regul ))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
+        model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
         model.add(Dropout(0.5))
 
 
@@ -170,8 +170,6 @@ with tf.device('/gpu:0'):
     # save model
     plot(model, show_shapes=True , show_layer_names=True,  to_file='/home/ubuntu/output/' + RUN + '_model.png')
 
-
-
     #
     #
     #     `7MN.   `7MF' .g8""8q. `7MM"""Mq.  `7MMM.     ,MMF'      db      `7MMF'      `7MMF'MMM"""AMV `7MM"""YMM
@@ -185,17 +183,17 @@ with tf.device('/gpu:0'):
     #
 
     # center and standardize - at this point its just the cubes
-    mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
-    funcs.mean = mean
-    funcs.std = std
+    x_train_cs = funcs.centerAndNormalize(x_train)
+    # mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
+    # funcs.mean = mean
+    # funcs.std = std
 
-    print ( "mean and std shape: " ,mean.shape,std.shape )
+    # print ( "mean and std shape: " ,mean.shape,std.shape )
 
-    np.save( "/home/ubuntu/output/" + RUN + "_mean.npy", mean)
-    np.save( "/home/ubuntu/output/" + RUN + "_std.npy", std)
+    # np.save( "/home/ubuntu/output/" + RUN + "_mean.npy", mean)
+    # np.save( "/home/ubuntu/output/" + RUN + "_std.npy", std)
 
     print ( "params: " , model.count_params() )
-
 
 
     #
