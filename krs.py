@@ -179,6 +179,11 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
             # posotive is counter-clockwise , negative is clockwise .. but same thing..
             # 0 = no rotation
             # list to choose from [0,1,2,3]
+
+            #
+            #
+            #
+
             miniPatch = np.rot90(miniPatch , k= random.randint(0,3) , axes=(1,2) )
 
 
@@ -300,8 +305,6 @@ def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip
                 if batches ==  len(x_train_out) :
                     break
         
-
-
 
 
 

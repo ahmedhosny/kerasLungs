@@ -64,7 +64,7 @@ def manageDataFrames():
     dataFrame = dataFrame.reset_index(drop=True)
 
     
-    #2# use 1,2,3 stages
+    #2# use 1,2,3 stages no 1
     stageToInclude = [1.0,2.0,3.0]
     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
     dataFrame = dataFrame.reset_index(drop=True)
@@ -369,20 +369,6 @@ def centerAndStandardizeValTest(arr,mean,std):
     #
     return out
 
-# get auc
-def AUC(test_labels,test_prediction):
-    n_classes = 2
-    # http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#sphx-glr-auto-examples-model-selection-plot-roc-py
-    # Compute ROC curve and ROC area for each class
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    for i in range(n_classes):
-        # ( actual labels, predicted probabilities )
-        fpr[i], tpr[i], _ = roc_curve(test_labels[:, i], test_prediction[:, i] ) # flip here
-        roc_auc[i] = auc(fpr[i], tpr[i])
-
-    return round(roc_auc[0],3) , round(roc_auc[1],3)
 
 def AUC(test_labels,test_prediction):
     n_classes = 2
@@ -416,6 +402,7 @@ class Histories(keras.callbacks.Callback):
         self.train_loss = []
         self.auc = []
         self.logits = []
+        self.val_loss = []
 
         # save json representation
         model_json = self.model.to_json()
@@ -455,55 +442,13 @@ class Histories(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
 
+        # val_loss__ =  self.model.test_on_batch ( [ self.x_val ] , self.y_val )[0]
+        val_loss_ =  self.model.evaluate ( [ self.x_val ] , self.y_val , batch_size = self.dataFrameValidate.shape[0]  )[0]
 
-        logits = []
+        
 
-        for i in range (self.dataFrameValidate.shape[0]):
-
-            if fork: 
-
-                if mode == "3d":
-                    # get predictions
-                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
-                        self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
-                        self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
-
-                elif mode == "2d":
-                    # get predictions
-                    y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) ,
-                        self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
-                        self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
-
-            else:
-
-                if mode == "3d":
-                    # get predictions
-                    dim = int ( imgSize/( 1.0* skip) )
-                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
-
-                elif mode == "2d":
-                    # get predictions
-                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,imgSize,imgSize,1) ] )
-
-            # now after down with switching
-            logits.append( y_pred[0] )
-
-
-
-        print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
-        print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] )  )
-
-        logits = np.array(logits)
-
-        print ("logits: " , logits.shape , logits[0]    )
-        auc1 , auc2 = AUC(  self.y_val ,  logits )
-        print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
-        print ("wtf2")
-
-        # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
-        #
-        if epoch > 500:
-            if all(auc1>i for i in self.auc):
+        if epoch > 300:
+            if all(val_loss_< i for i in self.val_loss):
                 self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
                 print("Saved model to disk")
                 # save model and json representation
@@ -513,7 +458,31 @@ class Histories(keras.callbacks.Callback):
 
         # append and save train loss
         self.train_loss.append(logs.get('loss'))
-        np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss) 
+        np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss)
+
+        # append and save train loss
+        self.val_loss.append(val_loss_)
+        np.save( "/home/ubuntu/output/" + RUN + "_val_loss.npy", self.val_loss) 
+
+        
+
+        print ( "val loss: " , val_loss_  )
+        print ( "val loss: " , val_loss_  )
+
+
+        logits = self.model.predict ( [ self.x_val ] )
+
+        print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
+        print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] )  )
+
+        logits = np.array(logits)
+
+
+        print ("logits: " , logits.shape , logits[0]    )
+        auc1 , auc2 = AUC(  self.y_val ,  logits )
+        print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+        print ("wtf2")
+
 
         # append and save auc
         self.auc.append(auc1)
@@ -522,6 +491,78 @@ class Histories(keras.callbacks.Callback):
         # append and save logits
         self.logits.append(logits)
         np.save( "/home/ubuntu/output/" + RUN + "_logits.npy", self.logits)
+
+        ###############################################################################################################
+
+        # logits = []
+
+        # for i in range (self.dataFrameValidate.shape[0]):
+
+        #     if fork: 
+
+        #         if mode == "3d":
+        #             # get predictions
+        #             y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+        #                 self.x_val_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+        #                 self.x_val_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
+
+        #         elif mode == "2d":
+        #             # get predictions
+        #             y_pred = self.model.predict_on_batch ( [ self.x_val_a[i].reshape(1,imgSize,imgSize,1) ,
+        #                 self.x_val_s[i].reshape(1,imgSize,imgSize,1) , 
+        #                 self.x_val_c[i].reshape(1,imgSize,imgSize,1) ]  )
+
+        #     else:
+
+        #         if mode == "3d":
+        #             # get predictions
+        #             dim = int ( imgSize/( 1.0* skip) )
+        #             y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
+
+        #         elif mode == "2d":
+        #             # get predictions
+
+        #             y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,imgSize,imgSize,1) ] )
+
+        #     # now after down with switching
+        #     logits.append( y_pred[0] )
+
+
+
+
+
+        # print ( "\npredicted val zeros: "  , len( [ x for x in  logits if x[0] > x[1]  ] )  )
+        # print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] )  )
+
+        # logits = np.array(logits)
+
+        # print ("logits: " , logits.shape , logits[0]    )
+        # auc1 , auc2 = AUC(  self.y_val ,  logits )
+        # print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+        # print ("wtf2")
+
+        # # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
+        # #
+        # if epoch > 500:
+        #     if all(auc1>i for i in self.auc):
+        #         self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+        #         print("Saved model to disk")
+        #         # save model and json representation
+        #         model_json = self.model.to_json()
+        #         with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+        #             json_file.write(model_json)
+
+        # # append and save train loss
+        # self.train_loss.append(logs.get('loss'))
+        # np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss) 
+
+        # # append and save auc
+        # self.auc.append(auc1)
+        # np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
+
+        # # append and save logits
+        # self.logits.append(logits)
+        # np.save( "/home/ubuntu/output/" + RUN + "_logits.npy", self.logits)
          
         return
 

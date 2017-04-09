@@ -8,7 +8,7 @@ from keras import backend as K
 
 
 # current version
-RUN = "55"
+RUN = "56"
 # you want 2d or 3d convolutions?
 mode = "2d"
 # you want single architecture or 3-way architecture
