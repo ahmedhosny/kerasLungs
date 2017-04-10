@@ -47,8 +47,8 @@ def manageDataFrames():
         ( pd.isnull( dataFrame["patch_failed"] ) ) &
         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
         ( pd.notnull( dataFrame["surv2yr"] ) )  &
-        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
-        ( pd.notnull( dataFrame["stage"] ) ) 
+        ( pd.notnull( dataFrame["histology_grouped"] ) ) #  &
+        # ( pd.notnull( dataFrame["stage"] ) ) 
         # ( pd.notnull( dataFrame["age"] ) )  
         ]
    
@@ -56,12 +56,12 @@ def manageDataFrames():
     
     ###### FIX ALL
     
-    # #1# clean histology - remove smallcell and other
-    # # histToInclude - only NSCLC
-    # histToInclude = [1.0,2.0,3.0,4.0]
-    # # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
-    # dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
-    # dataFrame = dataFrame.reset_index(drop=True)
+    #1# clean histology - remove smallcell and other
+    # histToInclude - only NSCLC
+    histToInclude = [1.0,2.0,3.0,4.0]
+    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
 
     
     # #2# use 1,2,3 stages no 1
@@ -543,7 +543,7 @@ class Histories(keras.callbacks.Callback):
 
         # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
         #
-        if epoch > 500:
+        if epoch > 100:
             if all(auc1>i for i in self.auc):
                 self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
                 print("Saved model to disk")

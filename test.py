@@ -8,11 +8,11 @@ from keras import backend as K
 
 
 # current version
-RUN = "57"
+RUN = "58"
 # you want 2d or 3d convolutions?
 mode = "2d"
 # you want single architecture or 3-way architecture
-fork = False
+fork = True
 # final size should not be greater than 150
 finalSize = 120
 # size of minipatch fed to net

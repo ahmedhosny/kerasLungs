@@ -20,13 +20,13 @@ from keras import regularizers
 
 
 # current version
-RUN = "57" 
+RUN = "58" 
 
 # you want 2d or 3d convolutions?
 mode = "2d"
 
 # you want single architecture or 3-way architecture
-fork = False
+fork = True
 
 # final size should not be greater than 150
 finalSize = 120 
@@ -51,7 +51,7 @@ regul = regularizers.l2(0.0000001)
 # others...
 batch_size = 32 
 nb_epoch = 150000
-lr = 0.00001 
+lr = 0.0001 
 
 # print 
 print ("training : run: " , RUN , " lr: " , lr)
@@ -139,9 +139,18 @@ with tf.device('/gpu:0'):
             model_C = funcs.make2dConvModel(imgSize,regul)     
 
         # 
-        model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1)) #  output here is 512*3 
+        model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1  )) #  output here is 512*3 
+        model.add(BatchNormalization())
+        model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
         model.add(Dropout(0.5))
-        model.add(Dense(512))
+        #
+        model.add(Dense(512, activity_regularizer = regul  ))
+        model.add(BatchNormalization())
+        model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+        model.add(Dropout(0.5))
+        #
+        model.add(Dense(256 , activity_regularizer = regul ))
+        model.add(BatchNormalization())
         model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
         model.add(Dropout(0.5))
 
