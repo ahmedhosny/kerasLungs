@@ -20,7 +20,7 @@ from keras import regularizers
 
 
 # current version
-RUN = "56" 
+RUN = "57" 
 
 # you want 2d or 3d convolutions?
 mode = "2d"
@@ -50,7 +50,7 @@ regul = regularizers.l2(0.0000001)
 
 # others...
 batch_size = 32 
-nb_epoch = 100000
+nb_epoch = 150000
 lr = 0.00001 
 
 # print 
