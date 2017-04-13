@@ -144,12 +144,6 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
 
 
 
-        # if single and mode is 3d, lets slim down the cube a bit
-        if not fork and mode == "3d":
-            # EXTRACT SLIMMED DOWN CUBE
-            miniPatch = miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]
-
-
         # if we want to augment the data
         if augmentTraining:
 
@@ -214,9 +208,9 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
                 arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
 
                 # for saving images - ONLY 2d
-                # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter) + "_A.png" , miniPatch [mid,:,:].reshape(imgSize,imgSize) )
-                # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+1) + "_S.png" , np.flipud ( miniPatch [:,:,mid] ).reshape(imgSize,imgSize) )
-                # scipy.misc.imsave("/home/ubuntu/output/imgtst/" + str(counter+2) + "_C.png" , np.flipud ( miniPatch [:,mid,:] ).reshape(imgSize,imgSize) )
+                # scipy.misc.imsave("/home/ahmed/output/imgtst/" + str(counter) + "_A.png" , miniPatch [mid,:,:].reshape(imgSize,imgSize) )
+                # scipy.misc.imsave("/home/ahmed/output/imgtst/" + str(counter+1) + "_S.png" , np.flipud ( miniPatch [:,:,mid] ).reshape(imgSize,imgSize) )
+                # scipy.misc.imsave("/home/ahmed/output/imgtst/" + str(counter+2) + "_C.png" , np.flipud ( miniPatch [:,mid,:] ).reshape(imgSize,imgSize) )
                 # counter = counter+3
 
         # if single i.e. no forking
@@ -224,7 +218,8 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
 
             if mode == "3d":
                 # append as is - skipping already done before augmentation to speed things up
-                arr_list.append (  miniPatch  )
+                # arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]  )
+                arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
 
             elif mode == "2d":
                 arr_list.append (  miniPatch [mid,:,:] ) # only axial
@@ -358,7 +353,8 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode,fork,skip):
 
             if mode == "3d":
                 # EXTRACT SINGLE
-                arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+                # arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+                arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
             elif mode == "2d":
                 arr_list.append (  miniPatch [mid,:,:] ) # only axial
 

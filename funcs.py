@@ -34,6 +34,100 @@ K.set_image_dim_ordering('tf')
 #
 #
 
+
+# run 50   
+def manageDataFramesEqually():
+    trainList = ["nsclc_rt"] 
+    validateList = ["lung1"] 
+    testList = ["lung2"]
+
+    dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+    dataFrame = dataFrame [ 
+        ( pd.notnull( dataFrame["pathToData"] ) ) &
+        ( pd.notnull( dataFrame["pathToMask"] ) ) &
+        ( pd.notnull( dataFrame["stackMin"] ) ) &
+        ( pd.isnull( dataFrame["patch_failed"] ) ) &
+        # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+        ( pd.notnull( dataFrame["surv2yr"] ) )  &
+        ( pd.notnull( dataFrame["histology_grouped"] ) ) # &
+        # ( pd.notnull( dataFrame["stage"] ) ) 
+        # ( pd.notnull( dataFrame["age"] ) )  
+        ]
+   
+    dataFrame = dataFrame.reset_index(drop=True)
+    
+    ###### FIX ALL
+    
+    #1# clean histology - remove smallcell and other
+    # histToInclude - only NSCLC
+    histToInclude = [1.0,2.0,3.0,4.0]
+    # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+    dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+
+    
+    #2# use 1,2,3 stages
+    # stageToInclude = [1.0,2.0,3.0]
+    # dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+    # dataFrame = dataFrame.reset_index(drop=True)
+    # print ("all patients: " , dataFrame.shape)
+
+        
+    ###### GET TRAINING  
+
+    dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+    #3# type of treatment - use only radio or chemoRadio - use .npy file
+    chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+    dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+    #4# (rt only) use all causes of death
+    # not implemented
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     print ("train patients " , dataFrameTrain.shape)
+    
+    #### GET VAL
+    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+#     print ("validate patients : " , dataFrameValidate.shape)   
+    
+    ##### GET TEST
+    dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+#     print ("test size : " , dataFrameTest.shape)
+    
+    # put all, shuffle then reset index
+    dataFrame = pd.concat ( [  dataFrameTrain , dataFrameValidate , dataFrameTest  ]   )
+    dataFrame = dataFrame.sample( frac=1 , random_state = 245 ) # this random seed gives ok class balance in training
+    dataFrame = dataFrame.reset_index(drop=True)
+#     print ("all together : " , dataFrame.shape) 
+    
+    # split
+    
+    dataFrameTrain, dataFrameValidate, dataFrameTest = np.split(dataFrame,
+                                                                [int(.75*len(dataFrame)), int(.83*len(dataFrame))])
+    
+    
+    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+    print (  "zeros: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 0.0  ] )   ) 
+    print (  "ones: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 1.0  ] )   )   
+    print ("train patients " , dataFrameTrain.shape)
+    
+    #### GET VAL
+    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+    print (  "zeros: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 0.0  ] )   ) 
+    print (  "ones: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 1.0  ] )   ) 
+    print ("validate patients : " , dataFrameValidate.shape)   
+    
+    ##### GET TEST
+    dataFrameTest = dataFrameTest.reset_index(drop=True)
+    print (  "zeros: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 0.0  ] )   ) 
+    print (  "ones: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 1.0  ] )   ) 
+    print ("test size : " , dataFrameTest.shape)
+    
+    
+
+    return dataFrameTrain, dataFrameValidate,dataFrameTest
+
+
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
     validateList = ["lung1"] # leave empty
@@ -171,7 +265,7 @@ def getXandY(dataFrame,imgSize):
     
     for i in range (dataFrame.shape[0]):
 
-        npy =  "/home/ubuntu/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
+        npy =  "/home/ahmed/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
         # npy =  "~/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
         arr = np.load(npy)
 
@@ -207,7 +301,7 @@ def getX(dataFrame,imgSize):
 
     for i in range (dataFrame.shape[0]):
 
-        npy =  "/home/ubuntu/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
+        npy =  "/home/ahmed/data/" + str(dataFrame.dataset[i]) + "_" + str(dataFrame.patient[i]) + ".npy"
 
         arr = np.load(npy)
 
@@ -284,45 +378,84 @@ def make2dConvModel(imgSize,regul):
     return model
 
 
-
-def make3dConvModel(imgSize,count,fork,skip):
+def make3dConvModel(imgSize,count,fork,skip,regul):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
     
     model = Sequential()
 
     if fork:
-        model.add(Convolution3D(48, 3, 3, 3, border_mode='same',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] )) # 32
+        model.add(Convolution3D(64, 2, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
     else:
-        model.add(Convolution3D(48, 3, 3, 3, border_mode='same',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] )) # 32
+        # model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
+        model.add(Convolution3D(64, 2, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
 
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-
-    model.add(Convolution3D(48, 3, 3, 3)) # 32
+    model.add(Convolution3D(128, 2, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(3, 3, 3))) ### 
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    model.add(MaxPooling3D(pool_size=(2, 3, 3 ))) ### 
     model.add(Dropout(0.25))
 
-    model.add(Convolution3D(96, 3, 3, 3, border_mode='same')) # 64
+    model.add(Convolution3D(256, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-    model.add(Convolution3D(96, 3, 3 , 3)) # 64
+    model.add(Convolution3D(512, 1, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(3, 3, 3)))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    model.add(MaxPooling3D(pool_size=(2, 3, 3)))
     model.add(Dropout(0.25))
-
 
     model.add(Flatten())
-    model.add(Dense(512)) # 512
+    model.add(Dense(512 , activity_regularizer = regul )) # 512
     model.add(BatchNormalization())
-    model.add(Activation('relu'))
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(0.5))
     
     return model
+
+# def make3dConvModel(imgSize,count,fork,skip,regul):
+#     #(samples, rows, cols, channels) if dim_ordering='tf'.
+    
+#     model = Sequential()
+
+#     if fork:
+#         model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+#     else:
+#         # model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
+#         model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+
+
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+
+#     model.add(Convolution3D(128, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(MaxPooling3D(pool_size=(3, 3, 3 ))) ### 
+#     model.add(Dropout(0.25))
+
+#     model.add(Convolution3D(256, 3, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+#     model.add(Convolution3D(512, 3, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(MaxPooling3D(pool_size=(3, 3, 3)))
+#     model.add(Dropout(0.25))
+
+
+#     model.add(Flatten())
+#     model.add(Dense(512 , activity_regularizer = regul )) # 512
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(Dropout(0.5))
+    
+#     return model
 
 
 
@@ -406,11 +539,11 @@ class Histories(keras.callbacks.Callback):
 
         # save json representation
         model_json = self.model.to_json()
-        with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+        with open("/home/ahmed/output/" + RUN + "_json.json", "w") as json_file:
             json_file.write(model_json)
 
 
-        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFrames()
+        dataFrameTrain,dataFrameValidate,dataFrameTest= manageDataFramesEqually()
         #
         x_val,y_val,zeros,ones =  getXandY(dataFrameValidate,imgSize)
         print ("validation data:" , x_val.shape,  y_val.shape , zeros , ones ) 
@@ -449,20 +582,20 @@ class Histories(keras.callbacks.Callback):
 
         # if epoch > 300:
         #     if all(val_loss_< i for i in self.val_loss):
-        #         self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+        #         self.model.save_weights("/home/ahmed/output/" + RUN + "_model.h5")
         #         print("Saved model to disk")
         #         # save model and json representation
         #         model_json = self.model.to_json()
-        #         with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+        #         with open("/home/ahmed/output/" + RUN + "_json.json", "w") as json_file:
         #             json_file.write(model_json)
 
         # # append and save train loss
         # self.train_loss.append(logs.get('loss'))
-        # np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss)
+        # np.save( "/home/ahmed/output/" + RUN + "_train_loss.npy", self.train_loss)
 
         # # append and save train loss
         # self.val_loss.append(val_loss_)
-        # np.save( "/home/ubuntu/output/" + RUN + "_val_loss.npy", self.val_loss) 
+        # np.save( "/home/ahmed/output/" + RUN + "_val_loss.npy", self.val_loss) 
 
         
 
@@ -486,11 +619,11 @@ class Histories(keras.callbacks.Callback):
 
         # # append and save auc
         # self.auc.append(auc1)
-        # np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
+        # np.save( "/home/ahmed/output/" + RUN + "_auc.npy", self.auc)
 
         # # append and save logits
         # self.logits.append(logits)
-        # np.save( "/home/ubuntu/output/" + RUN + "_logits.npy", self.logits)
+        # np.save( "/home/ahmed/output/" + RUN + "_logits.npy", self.logits)
 
         ###############################################################################################################
 
@@ -517,7 +650,8 @@ class Histories(keras.callbacks.Callback):
                 if mode == "3d":
                     # get predictions
                     dim = int ( imgSize/( 1.0* skip) )
-                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
+                    # y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
+                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,count*2+1,imgSize,imgSize,1) ] ) 
 
                 elif mode == "2d":
                     # get predictions
@@ -526,8 +660,6 @@ class Histories(keras.callbacks.Callback):
 
             # now after down with switching
             logits.append( y_pred[0] )
-
-
 
 
 
@@ -543,26 +675,26 @@ class Histories(keras.callbacks.Callback):
 
         # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
         #
-        if epoch > 100:
+        if epoch > 10:
             if all(auc1>i for i in self.auc):
-                self.model.save_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+                self.model.save_weights("/home/ahmed/output/" + RUN + "_model.h5")
                 print("Saved model to disk")
                 # save model and json representation
                 model_json = self.model.to_json()
-                with open("/home/ubuntu/output/" + RUN + "_json.json", "w") as json_file:
+                with open("/home/ahmed/output/" + RUN + "_json.json", "w") as json_file:
                     json_file.write(model_json)
 
         # append and save train loss
         self.train_loss.append(logs.get('loss'))
-        np.save( "/home/ubuntu/output/" + RUN + "_train_loss.npy", self.train_loss) 
+        np.save( "/home/ahmed/output/" + RUN + "_train_loss.npy", self.train_loss) 
 
         # append and save auc
         self.auc.append(auc1)
-        np.save( "/home/ubuntu/output/" + RUN + "_auc.npy", self.auc)
+        np.save( "/home/ahmed/output/" + RUN + "_auc.npy", self.auc)
 
         # append and save logits
         self.logits.append(logits)
-        np.save( "/home/ubuntu/output/" + RUN + "_logits.npy", self.logits)
+        np.save( "/home/ahmed/output/" + RUN + "_logits.npy", self.logits)
          
         return
 
@@ -710,97 +842,7 @@ class Histories(keras.callbacks.Callback):
 #     return dataFrameTrain, dataFrameValidate,dataFrameTest
 
 
-# run 50   
-# def manageDataFramesEqually():
-#     trainList = ["nsclc_rt"] 
-#     validateList = ["lung1"] 
-#     testList = ["lung2"]
 
-#     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
-#     dataFrame = dataFrame [ 
-#         ( pd.notnull( dataFrame["pathToData"] ) ) &
-#         ( pd.notnull( dataFrame["pathToMask"] ) ) &
-#         ( pd.notnull( dataFrame["stackMin"] ) ) &
-#         ( pd.isnull( dataFrame["patch_failed"] ) ) &
-#         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
-#         ( pd.notnull( dataFrame["surv2yr"] ) )  &
-#         ( pd.notnull( dataFrame["histology_grouped"] ) )  &
-#         ( pd.notnull( dataFrame["stage"] ) ) 
-#         # ( pd.notnull( dataFrame["age"] ) )  
-#         ]
-   
-#     dataFrame = dataFrame.reset_index(drop=True)
-    
-#     ###### FIX ALL
-    
-#     #1# clean histology - remove smallcell and other
-#     # histToInclude - only NSCLC
-#     histToInclude = [1.0,2.0,3.0,4.0]
-#     # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
-#     dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
-#     dataFrame = dataFrame.reset_index(drop=True)
-
-    
-#     #2# use 1,2,3 stages
-#     stageToInclude = [1.0,2.0,3.0]
-#     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
-#     dataFrame = dataFrame.reset_index(drop=True)
-#     print ("all patients: " , dataFrame.shape)
-
-        
-#     ###### GET TRAINING  
-
-#     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
-#     #3# type of treatment - use only radio or chemoRadio - use .npy file
-#     chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
-#     dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
-#     #4# (rt only) use all causes of death
-#     # not implemented
-#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-# #     print ("train patients " , dataFrameTrain.shape)
-    
-#     #### GET VAL
-#     dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
-#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-# #     print ("validate patients : " , dataFrameValidate.shape)   
-    
-#     ##### GET TEST
-#     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
-#     dataFrameTest = dataFrameTest.reset_index(drop=True)
-# #     print ("test size : " , dataFrameTest.shape)
-    
-#     # put all, shuffle then reset index
-#     dataFrame = pd.concat ( [  dataFrameTrain , dataFrameValidate , dataFrameTest  ]   )
-#     dataFrame = dataFrame.sample( frac=1 , random_state = 245 ) # this random seed gives ok class balance in training
-#     dataFrame = dataFrame.reset_index(drop=True)
-# #     print ("all together : " , dataFrame.shape) 
-    
-#     # split
-    
-#     dataFrameTrain, dataFrameValidate, dataFrameTest = np.split(dataFrame,
-#                                                                 [int(.75*len(dataFrame)), int(.83*len(dataFrame))])
-    
-    
-#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-#     print (  "zeros: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 0.0  ] )   ) 
-#     print (  "ones: " , len( [ x for x in dataFrameTrain.surv2yr.tolist() if x == 1.0  ] )   )   
-#     print ("train patients " , dataFrameTrain.shape)
-    
-#     #### GET VAL
-#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-#     print (  "zeros: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 0.0  ] )   ) 
-#     print (  "ones: " , len( [ x for x in dataFrameValidate.surv2yr.tolist() if x == 1.0  ] )   ) 
-#     print ("validate patients : " , dataFrameValidate.shape)   
-    
-#     ##### GET TEST
-#     dataFrameTest = dataFrameTest.reset_index(drop=True)
-#     print (  "zeros: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 0.0  ] )   ) 
-#     print (  "ones: " , len( [ x for x in dataFrameTest.surv2yr.tolist() if x == 1.0  ] )   ) 
-#     print ("test size : " , dataFrameTest.shape)
-    
-    
-
-#     return dataFrameTrain, dataFrameValidate,dataFrameTest
 
 
 # run 51

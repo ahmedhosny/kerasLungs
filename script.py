@@ -20,13 +20,13 @@ from keras import regularizers
 
 
 # current version
-RUN = "58" 
+RUN = "61" 
 
 # you want 2d or 3d convolutions?
-mode = "2d"
+mode = "3d"
 
 # you want single architecture or 3-way architecture
-fork = True
+fork = False
 
 # final size should not be greater than 150
 finalSize = 120 
@@ -39,7 +39,7 @@ count = 3
 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 2
+skip = 3
 
 # augment while training?
 # random minipatch is done regardless. This bool controls flipping and rotation
@@ -49,7 +49,7 @@ LRELUalpha = 0.3
 regul = regularizers.l2(0.0000001)
 
 # others...
-batch_size = 32 
+batch_size = 32
 nb_epoch = 150000
 lr = 0.0001 
 
@@ -91,7 +91,7 @@ funcs.LRELUalpha = LRELUalpha
 #
 
 #1# get dataframnes
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #2# get data
 x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
@@ -129,9 +129,9 @@ with tf.device('/gpu:0'):
         model = Sequential()
 
         if mode == "3d":
-            model_A = funcs.make3dConvModel(imgSize,count,fork,skip)  
-            model_S = funcs.make3dConvModel(imgSize,count,fork,skip)  
-            model_C = funcs.make3dConvModel(imgSize,count,fork,skip) 
+            model_A = funcs.make3dConvModel(imgSize,count,fork,skip,regul)  
+            model_S = funcs.make3dConvModel(imgSize,count,fork,skip,regul)  
+            model_C = funcs.make3dConvModel(imgSize,count,fork,skip,regul) 
 
         elif mode == "2d":
             model_A = funcs.make2dConvModel(imgSize,regul)  
@@ -157,7 +157,7 @@ with tf.device('/gpu:0'):
     else:
 
         if mode == "3d":
-            model = funcs.make3dConvModel(imgSize, count ,fork,skip) # output here is 512
+            model = funcs.make3dConvModel(imgSize, count ,fork,skip,regul) # output here is 512
 
         elif mode == "2d":
             model = funcs.make2dConvModel(imgSize,regul) # output here is 512
@@ -177,7 +177,7 @@ with tf.device('/gpu:0'):
     model.compile(loss='categorical_crossentropy', optimizer=myOptimizer, metrics=['accuracy'])
 
     # save model
-    plot(model, show_shapes=True , show_layer_names=True,  to_file='/home/ubuntu/output/' + RUN + '_model.png')
+    plot(model, show_shapes=True , show_layer_names=True,  to_file='/home/ahmed/output/' + RUN + '_model.png')
 
     #
     #
@@ -199,8 +199,8 @@ with tf.device('/gpu:0'):
 
     # print ( "mean and std shape: " ,mean.shape,std.shape )
 
-    # np.save( "/home/ubuntu/output/" + RUN + "_mean.npy", mean)
-    # np.save( "/home/ubuntu/output/" + RUN + "_std.npy", std)
+    # np.save( "/home/ahmed/output/" + RUN + "_mean.npy", mean)
+    # np.save( "/home/ahmed/output/" + RUN + "_std.npy", std)
 
     print ( "params: " , model.count_params() )
 

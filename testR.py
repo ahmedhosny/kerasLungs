@@ -41,7 +41,7 @@ print ("training : run: " , RUN )
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #
 #
@@ -124,12 +124,12 @@ else:
 #
 
 # load json and create model
-json_file = open( "/home/ubuntu/output/" + RUN + '_json.json' , 'r')
+json_file = open( "/home/ahmed/output/" + RUN + '_json.json' , 'r')
 loaded_model_json = json_file.read()
 json_file.close()
 myModel = model_from_json(loaded_model_json)
 # load weights into new model
-myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+myModel.load_weights("/home/ahmed/output/" + RUN + "_model.h5")
 
 
 # make funcs
@@ -244,7 +244,7 @@ dataFrameTest['logit_1'] = [ x[1] for x in logits ]
 
 
 
-dataFrameTest.to_csv("/home/ubuntu/output/" + RUN + "_dataFrame.csv" )
+dataFrameTest.to_csv("/home/ahmed/output/" + RUN + "_dataFrame.csv" )
 
 
 
@@ -282,7 +282,7 @@ dataFrameTest.to_csv("/home/ubuntu/output/" + RUN + "_dataFrame.csv" )
 
 # logits = np.array(logits)
 # # save logits
-# np.save( "/home/ubuntu/output/" + RUN + "_test_logits.npy", logits )
+# np.save( "/home/ahmed/output/" + RUN + "_test_logits.npy", logits )
 
 # print ("logits: " , logits.shape , logits[0] , logits[30] , logits[60]  )
 # auc1 , auc2 = funcs.AUC(  y_test ,  logits )

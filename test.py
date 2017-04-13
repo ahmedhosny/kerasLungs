@@ -8,11 +8,11 @@ from keras import backend as K
 
 
 # current version
-RUN = "58"
+RUN = "61"
 # you want 2d or 3d convolutions?
-mode = "2d"
+mode = "3d"
 # you want single architecture or 3-way architecture
-fork = True
+fork = False
 # final size should not be greater than 150
 finalSize = 120
 # size of minipatch fed to net
@@ -21,7 +21,7 @@ imgSize = 80
 count = 3 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 2
+skip = 3
 
 # print 
 print ("training : run: " , RUN )
@@ -38,7 +38,7 @@ print ("training : run: " , RUN )
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #
 #
@@ -108,12 +108,12 @@ else:
 #
 
 # load json and create model
-json_file = open( "/home/ubuntu/output/" + RUN + '_json.json' , 'r')
+json_file = open( "/home/ahmed/output/" + RUN + '_json.json' , 'r')
 loaded_model_json = json_file.read()
 json_file.close()
 myModel = model_from_json(loaded_model_json)
 # load weights into new model
-myModel.load_weights("/home/ubuntu/output/" + RUN + "_model.h5")
+myModel.load_weights("/home/ahmed/output/" + RUN + "_model.h5")
 
 
 
@@ -152,7 +152,9 @@ for i in range (valOrTest.shape[0]):
 
         if mode == "3d":
             # get predictions
-            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
+            # y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
+            y_pred = myModel.predict_on_batch ( [ x_test
+                [i].reshape(1,count*2+1,imgSize,imgSize,1) ])
 
         elif mode == "2d":
             # get predictions
@@ -172,7 +174,7 @@ print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] ) 
 
 logits = np.array(logits)
 # save logits
-np.save( "/home/ubuntu/output/" + RUN + "_test_logits.npy", logits )
+np.save( "/home/ahmed/output/" + RUN + "_test_logits.npy", logits )
 
 print ("logits: " , logits.shape , logits[0] , logits[30]  )
 
