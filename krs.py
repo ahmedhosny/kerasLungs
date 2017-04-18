@@ -2,6 +2,7 @@
 from __future__ import division
 
 import numpy as np
+np.random.seed(123)
 import scipy.ndimage as ndi
 import random 
 from keras.utils import np_utils

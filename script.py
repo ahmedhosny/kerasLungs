@@ -1,10 +1,14 @@
 from __future__ import division
+
+import numpy as np
+np.random.seed(123)
+import tensorflow as tf
+tf.set_random_seed(123)
+
 import funcs
 import krs
-import numpy as np
 import keras
 from keras.utils import np_utils
-import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten , advanced_activations
 from keras.layers.normalization import BatchNormalization
@@ -20,13 +24,13 @@ from keras import regularizers
 
 
 # current version
-RUN = "61" 
+RUN = "70" 
 
 # you want 2d or 3d convolutions?
 mode = "3d"
 
 # you want single architecture or 3-way architecture
-fork = False
+fork = True
 
 # final size should not be greater than 150
 finalSize = 120 
@@ -39,18 +43,18 @@ count = 3
 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 3
+skip = 4
 
 # augment while training?
 # random minipatch is done regardless. This bool controls flipping and rotation
 krs.augmentTraining = True
 
 LRELUalpha = 0.3
-regul = regularizers.l2(0.0000001)
+regul = regularizers.l2(0.0001) # 0.0000001
 
 # others...
 batch_size = 32
-nb_epoch = 150000
+nb_epoch = 1000
 lr = 0.0001 
 
 # print 
@@ -91,7 +95,7 @@ funcs.LRELUalpha = LRELUalpha
 #
 
 #1# get dataframnes
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
+dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 #2# get data
 x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
