@@ -24,7 +24,7 @@ from keras import regularizers
 
 
 # current version
-RUN = "70" 
+RUN = "72" 
 
 # you want 2d or 3d convolutions?
 mode = "3d"
@@ -33,10 +33,10 @@ mode = "3d"
 fork = True
 
 # final size should not be greater than 150
-finalSize = 120 
+finalSize = 100 
 
 # size of minipatch fed to net
-imgSize = 80
+imgSize = 60
 
 # for 3d + fork , # of slices to take in each direction
 count = 3
@@ -54,7 +54,7 @@ regul = regularizers.l2(0.0001) # 0.0000001
 
 # others...
 batch_size = 32
-nb_epoch = 1000
+nb_epoch = 200000
 lr = 0.0001 
 
 # print 

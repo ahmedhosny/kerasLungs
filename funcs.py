@@ -394,33 +394,36 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model = Sequential()
 
     if fork:
-        model.add(Convolution3D(32, 2, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+        model.add(Convolution3D(32, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
     else:
         # model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
-        model.add(Convolution3D(32, 2, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+        model.add(Convolution3D(32, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
 
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    model.add(Dropout(0.25))
 
-    model.add(Convolution3D(64, 2, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(64, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(MaxPooling3D(pool_size=(2, 3, 3 ))) ### 
+    model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
     model.add(Dropout(0.25))
 
     model.add(Convolution3D(128, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    model.add(Dropout(0.25))
 
     model.add(Convolution3D(256, 1, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(MaxPooling3D(pool_size=(2, 3, 3)))
+    model.add(MaxPooling3D(pool_size=(1, 3, 3)))
     model.add(Dropout(0.25))
 
     model.add(Convolution3D(512, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    model.add(Dropout(0.25))
 
     model.add(Flatten())
     model.add(Dense(512 , activity_regularizer = regul )) # 512

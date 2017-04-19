@@ -11,15 +11,15 @@ from keras import backend as K
 
 
 # current version
-RUN = "70"
+RUN = "72"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # you want single architecture or 3-way architecture
 fork = True
 # final size should not be greater than 150
-finalSize = 120
+finalSize = 100
 # size of minipatch fed to net
-imgSize = 80
+imgSize = 60
 # for 3d + fork , # of slices to take in each direction
 count = 3
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
