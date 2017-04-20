@@ -228,7 +228,7 @@ def manageDataFrames():
     zero_train = zero[~zero_msk]
     one_train = one[~one_msk]
     dataFrameTrain = pd.DataFrame()
-    dataFrameTrain = dataFrameTrain.append(zero_train)
+    dataFrameTrain = dataFrameTrain.append( zero_train.sample( frac=0.73 , random_state = 42 )  )  ################################################### 
     dataFrameTrain = dataFrameTrain.append(one_train)
     dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 42 )
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
@@ -255,6 +255,22 @@ def manageDataFrames():
 
     return dataFrameTrain,dataFrameValidate,dataFrameTest
 
+
+# used for evaluating performance 
+def aggregate(logits,mul):
+    logitsOut = []
+    #
+    for i in range ( 0,logits.shape[0],mul ):
+        tempVal0 = 0
+        tempVal1 = 0
+        for k in range (mul):
+            tempVal0 += logits[i+k][0]
+            tempVal1 += logits[i+k][1]
+        val0 = tempVal0 / (mul*1.0)
+        val1 = tempVal1 / (mul*1.0)
+        logitsOut.append( [ val0,val1 ] )
+    #
+    return np.array(logitsOut)
 
 
 def getXandY(dataFrame,imgSize):
@@ -388,6 +404,7 @@ def make2dConvModel(imgSize,regul):
     return model
 
 
+
 def make3dConvModel(imgSize,count,fork,skip,regul):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
     
@@ -432,6 +449,7 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model.add(Dropout(0.5))
     
     return model
+
 
 # def make3dConvModel(imgSize,count,fork,skip,regul):
 #     #(samples, rows, cols, channels) if dim_ordering='tf'.

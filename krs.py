@@ -377,3 +377,81 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode,fork,skip):
       
         return arr_list
 
+
+# this is used to extract the slices (either 2d or 3d. fork or no fork) from the validation or test sets
+# for training, this is automatically done in the generator
+# this one exports multiple
+def splitValTestMul(x_valTest,finalSize,imgSize,count,mode,fork,skip):
+
+    # for forking
+    arr_a_list = []
+    arr_s_list = []
+    arr_c_list = []
+    # for no forking
+    arr_list = []
+
+    # loop through each patient.
+    for arr in iter(x_valTest):
+
+        # offset array to get a smaller one
+        offsetArr = offsetPatch(arr, finalSize)
+
+
+        for j in range(0,9):
+
+            # gets the patch at the center
+            miniPatch = getMiniPatch(j,offsetArr,imgSize)
+
+            # reshape to make channel
+            miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+
+
+            # EXTRACT ORIENTATION SLICES
+            travel = int(count * skip)
+            mid  = int(imgSize/2.0)
+
+            if fork:
+
+                if mode == "3d":
+                    #
+                    arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+                    #
+                    arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+                    arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+                    #
+                    arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+                    arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+
+                elif mode == "2d":
+                    #
+                    arr_a_list.append( miniPatch [mid,:,:] )
+                    arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
+                    arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
+
+            else:
+
+                if mode == "3d":
+                    # EXTRACT SINGLE
+                    # arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+                    arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
+                elif mode == "2d":
+                    arr_list.append (  miniPatch [mid,:,:] ) # only axial
+
+
+
+    #
+    # AFTER LOOP - no randomizing here - just as is
+    #
+    if fork:        
+        # 
+        arr_a_list = np.array( arr_a_list ) 
+        arr_s_list = np.array( arr_s_list )
+        arr_c_list = np.array( arr_c_list )  
+               
+        return arr_a_list,arr_s_list,arr_c_list
+
+    else:
+        #
+        arr_list = np.array( arr_list ) 
+      
+        return arr_list

@@ -19,27 +19,27 @@ from keras import regularizers
 
 # 2d + fork = axial,saggittal,coronal ( imgSize x imgSize )
 # 3d + fork = axial,saggittal,coronal ( count*2+1 x imgSize x imgSize )
-# 2d + no fork = axial ( imgSize x imgSize )
+# 2d + no fork = axial ( imgSize x imgSize )d
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
 
 # current version
-RUN = "72" 
+RUN = "74" 
 
 # you want 2d or 3d convolutions?
 mode = "3d"
 
 # you want single architecture or 3-way architecture
-fork = True
+fork = False
 
 # final size should not be greater than 150
-finalSize = 100 
+finalSize = 120 
 
 # size of minipatch fed to net
-imgSize = 60
+imgSize = 80
 
 # for 3d + fork , # of slices to take in each direction
-count = 3
+count = 7
 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
@@ -47,14 +47,14 @@ skip = 4
 
 # augment while training?
 # random minipatch is done regardless. This bool controls flipping and rotation
-krs.augmentTraining = True
+krs.augmentTraining = False
 
 LRELUalpha = 0.3
 regul = regularizers.l2(0.0001) # 0.0000001
 
 # others...
 batch_size = 32
-nb_epoch = 200000
+nb_epoch = 100000
 lr = 0.0001 
 
 # print 

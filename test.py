@@ -11,21 +11,23 @@ from keras import backend as K
 
 
 # current version
-RUN = "72"
+RUN = "74"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # you want single architecture or 3-way architecture
-fork = True
+fork = False
 # final size should not be greater than 150
-finalSize = 100
+finalSize = 120
 # size of minipatch fed to net
-imgSize = 60
+imgSize = 80
 # for 3d + fork , # of slices to take in each direction
-count = 3
+count = 7
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
 skip = 4
-
+#
+MUL = False # if false, set MULVAL to 1
+MULVAL = 1
 # print 
 print ("training : run: " , RUN )
 
@@ -80,20 +82,34 @@ x_test,y_test,zeros,ones =  funcs.getXandY(valOrTest,imgSize)
 print ("test data:" , x_test.shape,  y_test.shape  ) 
 print ("zeros: " , zeros , "ones: " , ones)
 
+
+
 # center and standardize
 # x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
 x_test_cs = funcs.centerAndNormalize(x_test)
 
+if MUL : 
+    y_test_print = [x for x in y_test for _ in np.arange(MULVAL)]
 
-if fork:
-    # lets get the 3 orientations
-    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
-    print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
+    if fork:
 
+        # lets get the 3 orientations
+        x_test_a,x_test_s,x_test_c = krs.splitValTestMul(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
+        print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
+
+    else:
+        x_test = krs.splitValTestMul(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
+        print ("final val data:" , x_test.shape)
 else:
-    x_test = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
-    print ("final val data:" , x_test.shape)
 
+    if fork:
+        # lets get the 3 orientations
+        x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
+        print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
+
+    else:
+        x_test = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
+        print ("final val data:" , x_test.shape)  
 
 
 
@@ -134,7 +150,7 @@ myModel.load_weights("/home/ahmed/output/" + RUN + "_model.h5")
 
 logits = []
 #
-for i in range (valOrTest.shape[0]): 
+for i in range ( valOrTest.shape[0] * MULVAL ): 
 
 
     if fork: 
@@ -163,8 +179,10 @@ for i in range (valOrTest.shape[0]):
             # get predictions
             y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize,imgSize,1) ] )
 
-
-    print ( y_pred [0][0] , y_pred [0][1] , int( valOrTest.surv2yr[i] ) )  
+    if MUL:
+        print ( y_pred [0][0] , y_pred [0][1] ,  y_test_print[i]  ) 
+    else:
+        print ( y_pred [0][0] , y_pred [0][1] ,  int( valOrTest.surv2yr[i] )  ) 
     # now after down with switching
     logits.append( y_pred[0] )
 
@@ -184,6 +202,12 @@ print ("logits: " , logits.shape , logits[0] , logits[30]  )
 # auc ver 1
 # auc1 , auc2 = funcs.AUC(  y_test ,  logits )
 # print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+
+# before AUC, need to combine predictions
+if MUL:
+    logits = funcs.aggregate(logits,MULVAL)
+
+print ("logits: " , logits.shape   ) # , logits[0] , logits[30]
 
 # auc ver 2
 myAuc = funcs.AUCalt( y_test , logits)
