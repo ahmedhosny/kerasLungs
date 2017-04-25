@@ -132,10 +132,12 @@ def manageDataFramesEqually():
     return dataFrameTrain, dataFrameValidate,dataFrameTest
 
 
+# adjusted for only 2 datasets
+
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = ["lung2"] # leave empty
-    testList = ["lung1"] # split to val and test
+    validateList = ["lung1"] # leave empty
+    testList = ["lung2"] # split to val and test
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -180,28 +182,19 @@ def manageDataFrames():
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
     print ("train patients " , dataFrameTrain.shape)
 
-    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
-    dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    print ("validate patients : " , dataFrameValidate.shape)
 
 
-    #
-    # now combine train and val , then split them.
-    dataFrameTrainValidate = pd.concat([dataFrameTrain,dataFrameValidate] , ignore_index=False )
-    dataFrameTrainValidate = dataFrameTrainValidate.sample( frac=1 , random_state = 42 )
-    dataFrameTrainValidate = dataFrameTrainValidate.reset_index(drop=True)
-    print ("final - train and validate patients : " , dataFrameTrainValidate.shape)
 
 
-    thirty = int(dataFrameTrainValidate.shape[0]*0.06)   ######################################
+    thirty = int(dataFrameTrain.shape[0]*0.06)   ######################################
     if thirty % 2 != 0:
         thirty = thirty + 1
 
 
 
     # get 0's and 1's.
-    zero = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 0.0)  ]
-    one = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 1.0)  ]
+    zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
+    one = dataFrameTrain [  (dataFrameTrain['surv2yr']== 1.0)  ]
 
     print ( zero.shape , one.shape )
     # split to train and val
@@ -253,7 +246,130 @@ def manageDataFrames():
 
     
 
-    return dataFrameTrain,dataFrameValidate,dataFrameTest #################################
+    return dataFrameTrain,dataFrameValidate,dataFrameTest 
+
+# def manageDataFrames():
+#     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
+#     validateList = ["lung2"] # leave empty
+#     testList = ["lung1"] # split to val and test
+
+#     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
+#     dataFrame = dataFrame [ 
+#         ( pd.notnull( dataFrame["pathToData"] ) ) &
+#         ( pd.notnull( dataFrame["pathToMask"] ) ) &
+#         ( pd.notnull( dataFrame["stackMin"] ) ) &
+#         ( pd.isnull( dataFrame["patch_failed"] ) ) &
+#         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
+#         ( pd.notnull( dataFrame["surv2yr"] ) )  &
+#         ( pd.notnull( dataFrame["histology_grouped"] ) ) #  &
+#         # ( pd.notnull( dataFrame["stage"] ) ) 
+#         # ( pd.notnull( dataFrame["age"] ) )  
+#         ]
+   
+#     dataFrame = dataFrame.reset_index(drop=True)
+    
+#     ###### FIX ALL
+    
+#     #1# clean histology - remove smallcell and other
+#     # histToInclude - only NSCLC
+#     histToInclude = [1.0,2.0,3.0,4.0]
+#     # not included - SCLC and other and no data [ 0,5,6,7,8,9 ]
+#     dataFrame = dataFrame [ dataFrame.histology_grouped.isin(histToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+
+    
+#     # #2# use 1,2,3 stages no 1
+#     # stageToInclude = [1.0,2.0,3.0]
+#     # dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+#     # dataFrame = dataFrame.reset_index(drop=True)
+#     # print ("all patients: " , dataFrame.shape)
+
+        
+#     ###### GET TRAINING / VALIDATION 
+
+#     dataFrameTrain = dataFrame [ dataFrame["dataset"].isin(trainList) ]
+#     #3# type of treatment - use only radio or chemoRadio - use .npy file
+#     chemoRadio = np.load("rt_chemoRadio.npy").astype(str)
+#     dataFrameTrain = dataFrameTrain [ dataFrameTrain["patient"].isin(chemoRadio) ]
+#     #4# (rt only) use all causes of death
+#     # not implemented
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     print ("train patients " , dataFrameTrain.shape)
+
+#     dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
+#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+#     print ("validate patients : " , dataFrameValidate.shape)
+
+
+#     #
+#     # now combine train and val , then split them.
+#     dataFrameTrainValidate = pd.concat([dataFrameTrain,dataFrameValidate] , ignore_index=False )
+#     dataFrameTrainValidate = dataFrameTrainValidate.sample( frac=1 , random_state = 42 )
+#     dataFrameTrainValidate = dataFrameTrainValidate.reset_index(drop=True)
+#     print ("final - train and validate patients : " , dataFrameTrainValidate.shape)
+
+
+#     thirty = int(dataFrameTrainValidate.shape[0]*0.06)   ######################################
+#     if thirty % 2 != 0:
+#         thirty = thirty + 1
+
+
+
+#     # get 0's and 1's.
+#     zero = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 0.0)  ]
+#     one = dataFrameTrainValidate [  (dataFrameTrainValidate['surv2yr']== 1.0)  ]
+
+#     print ( zero.shape , one.shape )
+#     # split to train and val
+#     half = int(thirty/2.0)
+
+#     trueList = [True for i in range (half)]
+
+#     #
+#     zeroFalseList = [False for i in range (zero.shape[0] - half )]
+#     zero_msk = trueList + zeroFalseList
+#     random.seed(41)
+#     random.shuffle(zero_msk)
+#     zero_msk = np.array(zero_msk)
+#     #
+#     oneFalseList = [False for i in range (one.shape[0] - half )]
+#     one_msk = trueList + oneFalseList
+#     random.seed(41)
+#     random.shuffle(one_msk)
+#     one_msk = np.array(one_msk)
+
+
+
+#     # TRAIN
+#     zero_train = zero[~zero_msk]
+#     one_train = one[~one_msk]
+#     dataFrameTrain = pd.DataFrame()
+#     dataFrameTrain = dataFrameTrain.append( zero_train )  #.sample( frac=0.73 , random_state = 42 ) 
+#     dataFrameTrain = dataFrameTrain.append(one_train)
+#     dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 42 )
+#     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
+#     print ('final - train size:' , dataFrameTrain.shape)
+
+
+#     # VALIDATE
+#     zero_val = zero[zero_msk]
+#     one_val = one[one_msk]
+#     dataFrameValidate = pd.DataFrame()
+#     dataFrameValidate = dataFrameValidate.append(zero_val)
+#     dataFrameValidate = dataFrameValidate.append(one_val)
+#     dataFrameValidate = dataFrameValidate.sample( frac=1 , random_state = 42 )
+#     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
+#     print ('final - validate size:' , dataFrameValidate.shape)
+
+
+#     # TEST
+#     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
+#     dataFrameTest = dataFrameTest.reset_index(drop=True)
+#     print ("final - test size : " , dataFrameTest.shape)
+
+    
+
+#     return dataFrameTrain,dataFrameValidate,dataFrameTest 
 
 
 # used for evaluating performance 
@@ -360,11 +476,11 @@ def make2dConvModel(imgSize,regul):
 
     model = Sequential()
 
-    model.add(Convolution2D(48, 5, 5,  border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
+    model.add(Convolution2D(48, 3, 3,  border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-    model.add(MaxPooling2D(pool_size=(3, 3)  )) 
+    # model.add(MaxPooling2D(pool_size=(3, 3)  )) 
 
 
 
@@ -375,17 +491,20 @@ def make2dConvModel(imgSize,regul):
     model.add(MaxPooling2D(pool_size=(3, 3) ))
 
 
-
 #     model.add(Convolution2D(192, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 64
 #     model.add(BatchNormalization())
 #     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-#     model.add(Convolution2D(384, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 64
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    model.add(Convolution2D(192, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 64
+    model.add(BatchNormalization())
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
 
-#     model.add(MaxPooling2D(pool_size=(3, 3), strides=(2,2) ))
+    model.add(Convolution2D(256, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 64
+    model.add(BatchNormalization())
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+    model.add(MaxPooling2D(pool_size=(3, 3), strides=(2,2) ))
 
 
 
@@ -432,13 +551,14 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(convDrop))
 
-    model.add(Convolution3D(96, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(96, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
     model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
     model.add(Dropout(convDrop))
     
-    model.add(Convolution3D(192, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(192, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(convDrop))
@@ -446,24 +566,10 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model.add(Convolution3D(384, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
     model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
     model.add(Dropout(convDrop))
 
-#     model.add(Convolution3D(128, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-#     model.add(Dropout(convDrop))
-
-#     model.add(Convolution3D(128, 1, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-# #     model.add(MaxPooling3D(pool_size=(1, 3, 3)))
-#     model.add(Dropout(convDrop))
-
-    # model.add(Convolution3D(512, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
-    # model.add(BatchNormalization())
-    # model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    # model.add(Dropout(0.25))
 
     model.add(Flatten())
     model.add(Dense(512 , activity_regularizer = regul )) # 512
@@ -474,46 +580,6 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     return model
 
 
-# def make3dConvModel(imgSize,count,fork,skip,regul):
-#     #(samples, rows, cols, channels) if dim_ordering='tf'.
-    
-#     model = Sequential()
-
-#     if fork:
-#         model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
-#     else:
-#         # model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
-#         model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
-
-
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-
-
-#     model.add(Convolution3D(128, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-#     model.add(MaxPooling3D(pool_size=(3, 3, 3 ))) ### 
-#     model.add(Dropout(0.25))
-
-#     model.add(Convolution3D(256, 3, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-
-#     model.add(Convolution3D(512, 3, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-#     model.add(MaxPooling3D(pool_size=(3, 3, 3)))
-#     model.add(Dropout(0.25))
-
-
-#     model.add(Flatten())
-#     model.add(Dense(512 , activity_regularizer = regul )) # 512
-#     model.add(BatchNormalization())
-#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-#     model.add(Dropout(0.5))
-    
-#     return model
 
 
 

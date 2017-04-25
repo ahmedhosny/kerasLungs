@@ -24,7 +24,7 @@ from keras import regularizers
 
 
 # current version
-RUN = "84" 
+RUN = "89" 
 
 # you want 2d or 3d convolutions?
 mode = "3d"
@@ -33,13 +33,13 @@ mode = "3d"
 fork = True
 
 # final size should not be greater than 150
-finalSize = 80 
+finalSize = 60 
 
 # size of minipatch fed to net
-imgSize = 80
+imgSize = 60
 
 # for 3d + fork , # of slices to take in each direction
-count = 3
+count = 1
 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
