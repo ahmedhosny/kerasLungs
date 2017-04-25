@@ -24,30 +24,30 @@ from keras import regularizers
 
 
 # current version
-RUN = "74" 
+RUN = "84" 
 
 # you want 2d or 3d convolutions?
 mode = "3d"
 
 # you want single architecture or 3-way architecture
-fork = False
+fork = True
 
 # final size should not be greater than 150
-finalSize = 120 
+finalSize = 80 
 
 # size of minipatch fed to net
 imgSize = 80
 
 # for 3d + fork , # of slices to take in each direction
-count = 7
+count = 3
 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 4
+skip = 3
 
 # augment while training?
 # random minipatch is done regardless. This bool controls flipping and rotation
-krs.augmentTraining = False
+krs.augmentTraining = True
 
 LRELUalpha = 0.3
 regul = regularizers.l2(0.0001) # 0.0000001
@@ -58,7 +58,7 @@ nb_epoch = 100000
 lr = 0.0001 
 
 # print 
-print ("training : run: " , RUN , " lr: " , lr)
+print ("training : run: " , RUN , " lr: " , lr , " augment: " , krs.augmentTraining )
 
 
 #
@@ -182,6 +182,7 @@ with tf.device('/gpu:0'):
 
     # save model
     plot(model, show_shapes=True , show_layer_names=True,  to_file='/home/ahmed/output/' + RUN + '_model.png')
+    print (model.summary())
 
     #
     #
@@ -197,6 +198,8 @@ with tf.device('/gpu:0'):
 
     # center and standardize - at this point its just the cubes
     x_train_cs = funcs.centerAndNormalize(x_train)
+    # x_train_cs = x_train
+
     # mean,std,x_train_cs = funcs.centerAndStandardizeTraining(x_train)
     # funcs.mean = mean
     # funcs.std = std

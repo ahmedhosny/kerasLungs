@@ -11,23 +11,24 @@ from keras import backend as K
 
 
 # current version
-RUN = "74"
+RUN = "84"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # you want single architecture or 3-way architecture
-fork = False
+fork = True
 # final size should not be greater than 150
-finalSize = 120
+finalSize = 80
 # size of minipatch fed to net
 imgSize = 80
 # for 3d + fork , # of slices to take in each direction
-count = 7
+count = 3
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 4
+skip = 3
 #
 MUL = False # if false, set MULVAL to 1
 MULVAL = 1
+
 # print 
 print ("training : run: " , RUN )
 
@@ -87,6 +88,7 @@ print ("zeros: " , zeros , "ones: " , ones)
 # center and standardize
 # x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
 x_test_cs = funcs.centerAndNormalize(x_test)
+# x_test_cs = x_test
 
 if MUL : 
     y_test_print = [x for x in y_test for _ in np.arange(MULVAL)]
@@ -171,9 +173,9 @@ for i in range ( valOrTest.shape[0] * MULVAL ):
 
         if mode == "3d":
             # get predictions
-            # y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
-            y_pred = myModel.predict_on_batch ( [ x_test
-                [i].reshape(1,count*2+1,imgSize,imgSize,1) ])
+            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
+            # y_pred = myModel.predict_on_batch ( [ x_test
+            #     [i].reshape(1,count*2+1,imgSize,imgSize,1) ])
 
         elif mode == "2d":
             # get predictions
@@ -185,6 +187,7 @@ for i in range ( valOrTest.shape[0] * MULVAL ):
         print ( y_pred [0][0] , y_pred [0][1] ,  int( valOrTest.surv2yr[i] )  ) 
     # now after down with switching
     logits.append( y_pred[0] )
+
 
 
 # after loop

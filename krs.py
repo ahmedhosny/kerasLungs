@@ -9,95 +9,6 @@ from keras.utils import np_utils
 import scipy.misc
 import time
 
-#
-#
-#           db   `7MMF'   `7MF' .g8"""bgd `7MMM.     ,MMF'`7MM"""YMM  `7MN.   `7MF'MMP""MM""YMM
-#          ;MM:    MM       M .dP'     `M   MMMb    dPMM    MM    `7    MMN.    M  P'   MM   `7
-#         ,V^MM.   MM       M dM'       `   M YM   ,M MM    MM   d      M YMb   M       MM
-#        ,M  `MM   MM       M MM            M  Mb  M' MM    MMmmMM      M  `MN. M       MM
-#        AbmmmqMA  MM       M MM.    `7MMF' M  YM.P'  MM    MM   Y  ,   M   `MM.M       MM
-#       A'     VML YM.     ,M `Mb.     MM   M  `YM'   MM    MM     ,M   M     YMM       MM
-#     .AMA.   .AMMA.`bmmmmd"'   `"bmmmdPY .JML. `'  .JMML..JMMmmmmMMM .JML.    YM     .JMML.
-#
-#
-
-# this offsets the 150x150x150 patch into a smaller one equally from all sides
-def offsetPatch(arr, finalSize):
-    offset = int( (150-finalSize) / 2.0 )
-    offsetEnd = int ( 150-offset )
-    return arr[ offset:offsetEnd , offset:offsetEnd , offset:offsetEnd ]
-    
-# this function is used only during val/test
-# it gets the middle patch by feeding "4" into rand
-def getMiniPatch(rand,arr,imgSize):
-    lower = arr.shape[0] - imgSize
-    maxi = arr.shape[0]
-    mid1 = int(lower/2.0)
-    mid2 = maxi-int(lower/2.0)
-    
-    if rand == 0:
-        return arr[0:imgSize,0:imgSize,0:imgSize]
-    elif rand == 1:
-        return arr[0:imgSize,0:imgSize,lower:maxi]
-    elif rand == 2:
-        return arr[0:imgSize,lower:maxi,lower:maxi]  
-    elif rand == 3:
-        return arr[0:imgSize,lower:maxi,0:imgSize]  
-    #
-    elif rand == 4:
-        return arr[mid1:mid2,mid1:mid2,mid1:mid2] 
-    #
-    elif rand == 5:
-        return arr[lower:maxi,0:imgSize,0:imgSize]
-    elif rand == 6:
-        return arr[lower:maxi,0:imgSize,lower:maxi]
-    elif rand == 7:
-        return arr[lower:maxi,lower:maxi,lower:maxi]  
-    elif rand == 8:
-        return arr[lower:maxi,lower:maxi,0:imgSize]  
-
-# these 4 functions below apply rotations during augmentation
-def transform_matrix_offset_center(matrix, x, y):
-    o_x = float(x) / 2 + 0.5
-    o_y = float(y) / 2 + 0.5
-    offset_matrix = np.array([[1, 0, o_x], [0, 1, o_y], [0, 0, 1]])
-    reset_matrix = np.array([[1, 0, -o_x], [0, 1, -o_y], [0, 0, 1]])
-    transform_matrix = np.dot(np.dot(offset_matrix, matrix), reset_matrix)
-    return transform_matrix
-
-
-def apply_transform(x, transform_matrix, channel_axis=0, fill_mode='nearest', cval=0.):
-    x = np.rollaxis(x, channel_axis, 0)
-    final_affine_matrix = transform_matrix[:2, :2]
-    final_offset = transform_matrix[:2, 2]
-    channel_images = [ndi.interpolation.affine_transform(x_channel, final_affine_matrix,
-                                                         final_offset, order=0, mode=fill_mode, cval=cval) for x_channel in x]
-    x = np.stack(channel_images, axis=0)
-    x = np.rollaxis(x, 0, channel_axis + 1)
-    return x
-
-def random_rotation(x, theta=90, row_axis=1, col_axis=2, channel_axis=0,
-                    fill_mode='nearest', cval=0.):
-    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
-                                [np.sin(theta), np.cos(theta), 0],
-                                [0, 0, 1]])
-
-    h, w = x.shape[row_axis], x.shape[col_axis]
-    transform_matrix = transform_matrix_offset_center(rotation_matrix, h, w)
-    x = apply_transform(x, transform_matrix, channel_axis, fill_mode, cval)
-    return x
-
-def applyRotation(arr,theta):
-    #
-    out = np.copy(arr)
-    #
-    for i in range (arr.shape[0]):
-        out[i] = random_rotation(out[i],theta = theta, 
-                                 row_axis=0, col_axis=1, channel_axis=2, fill_mode='reflect', cval=0. )
-    return  out
-
-
-
 
 #
 #
@@ -162,25 +73,7 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
                 miniPatch =  miniPatch[:,:,::-1]
 
             # # rotation
-            # angleList = [-180,-90,0,90,180]
-            # randAng = angleList [ random.randint(0,4) ]
-            # theta = np.pi / 180 *  randAng # 
-            # # option 1 :  np.random.uniform(-180, 180) 
-            # # option 2 : randAng 
-            # miniPatch = applyRotation(miniPatch,theta) 
-
-            # alternate faster numpy rotation
-            # uses numpy 1.12.1
-            # posotive is counter-clockwise , negative is clockwise .. but same thing..
-            # 0 = no rotation
-            # list to choose from [0,1,2,3]
-
-            #
-            #
-            #
-
             miniPatch = np.rot90(miniPatch , k= random.randint(0,3) , axes=(1,2) )
-
 
             # OTHER AUGMENTATIONS COME HERE .....
 
@@ -219,8 +112,8 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
 
             if mode == "3d":
                 # append as is - skipping already done before augmentation to speed things up
-                # arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]  )
-                arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
+                arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ]  )
+                # arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
 
             elif mode == "2d":
                 arr_list.append (  miniPatch [mid,:,:] ) # only axial
@@ -262,12 +155,8 @@ def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mod
 
 
 
-        
-
-
 # runs every epoch
 def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip): # clinical_train,
-
 
     while True:
         
@@ -354,8 +243,8 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode,fork,skip):
 
             if mode == "3d":
                 # EXTRACT SINGLE
-                # arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
-                arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
+                arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+                # arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
             elif mode == "2d":
                 arr_list.append (  miniPatch [mid,:,:] ) # only axial
 
@@ -432,8 +321,8 @@ def splitValTestMul(x_valTest,finalSize,imgSize,count,mode,fork,skip):
 
                 if mode == "3d":
                     # EXTRACT SINGLE
-                    # arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
-                    arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
+                    arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+                    # arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
                 elif mode == "2d":
                     arr_list.append (  miniPatch [mid,:,:] ) # only axial
 
@@ -455,3 +344,54 @@ def splitValTestMul(x_valTest,finalSize,imgSize,count,mode,fork,skip):
         arr_list = np.array( arr_list ) 
       
         return arr_list
+
+
+
+
+#
+#
+#     `7MMF'  `7MMF'`7MM"""YMM  `7MMF'      `7MM"""Mq.`7MM"""YMM  `7MM"""Mq.   .M"""bgd
+#       MM      MM    MM    `7    MM          MM   `MM. MM    `7    MM   `MM. ,MI    "Y
+#       MM      MM    MM   d      MM          MM   ,M9  MM   d      MM   ,M9  `MMb.
+#       MMmmmmmmMM    MMmmMM      MM          MMmmdM9   MMmmMM      MMmmdM9     `YMMNq.
+#       MM      MM    MM   Y  ,   MM      ,   MM        MM   Y  ,   MM  YM.   .     `MM
+#       MM      MM    MM     ,M   MM     ,M   MM        MM     ,M   MM   `Mb. Mb     dM
+#     .JMML.  .JMML..JMMmmmmMMM .JMMmmmmMMM .JMML.    .JMMmmmmMMM .JMML. .JMM.P"Ybmmd"
+#
+#
+
+# this offsets the 150x150x150 patch into a smaller one equally from all sides
+def offsetPatch(arr, finalSize):
+    offset = int( (150-finalSize) / 2.0 )
+    offsetEnd = int ( 150-offset )
+    return arr[ offset:offsetEnd , offset:offsetEnd , offset:offsetEnd ]
+    
+# this function is used only during val/test
+# it gets the middle patch by feeding "4" into rand
+def getMiniPatch(rand,arr,imgSize):
+    lower = arr.shape[0] - imgSize
+    maxi = arr.shape[0]
+    mid1 = int(lower/2.0)
+    mid2 = maxi-int(lower/2.0)
+    
+    if rand == 0:
+        return arr[0:imgSize,0:imgSize,0:imgSize]
+    elif rand == 1:
+        return arr[0:imgSize,0:imgSize,lower:maxi]
+    elif rand == 2:
+        return arr[0:imgSize,lower:maxi,lower:maxi]  
+    elif rand == 3:
+        return arr[0:imgSize,lower:maxi,0:imgSize]  
+    #
+    elif rand == 4:
+        return arr[mid1:mid2,mid1:mid2,mid1:mid2] 
+    #
+    elif rand == 5:
+        return arr[lower:maxi,0:imgSize,0:imgSize]
+    elif rand == 6:
+        return arr[lower:maxi,0:imgSize,lower:maxi]
+    elif rand == 7:
+        return arr[lower:maxi,lower:maxi,lower:maxi]  
+    elif rand == 8:
+        return arr[lower:maxi,lower:maxi,0:imgSize]  
+

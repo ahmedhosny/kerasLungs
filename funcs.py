@@ -134,8 +134,8 @@ def manageDataFramesEqually():
 
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = ["lung1"] # leave empty
-    testList = ["lung2"] # split to val and test
+    validateList = ["lung2"] # leave empty
+    testList = ["lung1"] # split to val and test
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -228,7 +228,7 @@ def manageDataFrames():
     zero_train = zero[~zero_msk]
     one_train = one[~one_msk]
     dataFrameTrain = pd.DataFrame()
-    dataFrameTrain = dataFrameTrain.append( zero_train.sample( frac=0.73 , random_state = 42 )  )  ################################################### 
+    dataFrameTrain = dataFrameTrain.append( zero_train )  #.sample( frac=0.73 , random_state = 42 ) 
     dataFrameTrain = dataFrameTrain.append(one_train)
     dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 42 )
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
@@ -253,7 +253,7 @@ def manageDataFrames():
 
     
 
-    return dataFrameTrain,dataFrameValidate,dataFrameTest
+    return dataFrameTrain,dataFrameValidate,dataFrameTest #################################
 
 
 # used for evaluating performance 
@@ -360,87 +360,110 @@ def make2dConvModel(imgSize,regul):
 
     model = Sequential()
 
-    model.add(Convolution2D(64, 3, 3, border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
+    model.add(Convolution2D(48, 5, 5,  border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    ##### for figure only
-    # model.add(MaxPooling2D(pool_size=(3, 3))) ### 
+
+    model.add(MaxPooling2D(pool_size=(3, 3)  )) 
+
+
+
+    model.add(Convolution2D(96, 3, 3 ,  border_mode='valid', activity_regularizer = regul )) # 32
+    model.add(BatchNormalization())
+    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+    model.add(MaxPooling2D(pool_size=(3, 3) ))
+
+
+
+#     model.add(Convolution2D(192, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 64
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+#     model.add(Convolution2D(384, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 64
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+
+#     model.add(MaxPooling2D(pool_size=(3, 3), strides=(2,2) ))
+
+
+
+    # model.add(BatchNormalization())
+    # model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    # model.add(MaxPooling2D(pool_size=(3, 3)))
     # model.add(Dropout(0.25))
 
+    # # # this chucnk added - 14
+    # model.add(Convolution2D(256, 3, 3, border_mode='valid' , activity_regularizer = regul )) # 64
+    # model.add(BatchNormalization())
+    # model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-    model.add(Convolution2D(64, 3, 3 , border_mode='valid', activity_regularizer = regul )) # 32
-    model.add(BatchNormalization())
-    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Dropout(0.25))
-
-    model.add(Convolution2D(128, 3, 3, border_mode='valid' , activity_regularizer = regul )) # 64
-    model.add(BatchNormalization())
-    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-
-    model.add(Convolution2D(128, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
-    model.add(BatchNormalization())
-    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Dropout(0.25))
-
-    # # this chucnk added - 14
-    model.add(Convolution2D(256, 3, 3, border_mode='valid' , activity_regularizer = regul )) # 64
-    model.add(BatchNormalization())
-    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-
-    model.add(Convolution2D(256, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
-    model.add(BatchNormalization())
-    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Dropout(0.25))
+    # model.add(Convolution2D(256, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
+    # model.add(BatchNormalization())
+    # model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    # model.add(MaxPooling2D(pool_size=(3, 3)))
+    # model.add(Dropout(0.25))
 
     model.add(Flatten())
     model.add(Dense(512 , activity_regularizer = regul )) # 512
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(0.5))
+
     
     return model
-
 
 
 def make3dConvModel(imgSize,count,fork,skip,regul):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
     
+    convDrop = 0.25
+
     model = Sequential()
 
     if fork:
-        model.add(Convolution3D(32, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+        model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
     else:
-        # model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
-        model.add(Convolution3D(32, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+        model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
+        # model.add(Convolution3D(48, 5, 5, 5, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
 
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(Dropout(0.25))
+    model.add(Dropout(convDrop))
 
-    model.add(Convolution3D(64, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(96, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
-    model.add(Dropout(0.25))
-
-    model.add(Convolution3D(128, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
+    model.add(Dropout(convDrop))
+    
+    model.add(Convolution3D(192, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(Dropout(0.25))
-
-    model.add(Convolution3D(256, 1, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
+    model.add(Dropout(convDrop))
+    
+    model.add(Convolution3D(384, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(MaxPooling3D(pool_size=(1, 3, 3)))
-    model.add(Dropout(0.25))
+    model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
+    model.add(Dropout(convDrop))
 
-    model.add(Convolution3D(512, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
-    model.add(BatchNormalization())
-    model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-    model.add(Dropout(0.25))
+#     model.add(Convolution3D(128, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(Dropout(convDrop))
+
+#     model.add(Convolution3D(128, 1, 3 , 3 ,  border_mode='valid' , activity_regularizer = regul)) # 64
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+# #     model.add(MaxPooling3D(pool_size=(1, 3, 3)))
+#     model.add(Dropout(convDrop))
+
+    # model.add(Convolution3D(512, 1, 3, 3,  border_mode='valid' , activity_regularizer = regul )) # 64
+    # model.add(BatchNormalization())
+    # model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    # model.add(Dropout(0.25))
 
     model.add(Flatten())
     model.add(Dense(512 , activity_regularizer = regul )) # 512
@@ -563,7 +586,6 @@ def AUCalt( test_labels , test_prediction):
     return myAuc
 
 
-
 class Histories(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
 
@@ -587,6 +609,8 @@ class Histories(keras.callbacks.Callback):
         # lets do featurewiseCenterAndStd - its still a cube at this point
         # x_val_cs = centerAndStandardizeValTest(x_val,mean,std)
         x_val_cs = centerAndNormalize(x_val)
+        # x_val_cs = x_val
+
 
         if fork:
             # lets get the 3 orientations
@@ -685,8 +709,8 @@ class Histories(keras.callbacks.Callback):
                 if mode == "3d":
                     # get predictions
                     dim = int ( imgSize/( 1.0* skip) )
-                    # y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
-                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,count*2+1,imgSize,imgSize,1) ] ) 
+                    y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,dim,dim,dim,1) ] ) 
+                    # y_pred = self.model.predict_on_batch ( [ self.x_val[i].reshape(1,count*2+1,imgSize,imgSize,1) ] ) 
 
                 elif mode == "2d":
                     # get predictions
