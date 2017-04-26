@@ -9,7 +9,6 @@ from keras.utils import np_utils
 import scipy.misc
 import time
 
-
 #
 #
 #       .g8"""bgd `7MM"""YMM  `7MN.   `7MF'`7MM"""YMM  `7MM"""Mq.        db   MMP""MM""YMM   .g8""8q. `7MM"""Mq.

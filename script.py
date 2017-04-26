@@ -16,15 +16,16 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.visualize_util import plot
 from keras import regularizers
 
-
 # 2d + fork = axial,saggittal,coronal ( imgSize x imgSize )
 # 3d + fork = axial,saggittal,coronal ( count*2+1 x imgSize x imgSize )
 # 2d + no fork = axial ( imgSize x imgSize )d
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
-
 # current version
-RUN = "89" 
+RUN = "99" 
+
+# what to predict
+funcs.whatToPredict = "survival" # stage # histology
 
 # you want 2d or 3d convolutions?
 mode = "3d"
@@ -33,7 +34,7 @@ mode = "3d"
 fork = True
 
 # final size should not be greater than 150
-finalSize = 60 
+finalSize = 70 
 
 # size of minipatch fed to net
 imgSize = 60
@@ -54,7 +55,7 @@ regul = regularizers.l2(0.0001) # 0.0000001
 
 # others...
 batch_size = 32
-nb_epoch = 100000
+nb_epoch = 1000
 lr = 0.0001 
 
 # print 
@@ -72,7 +73,13 @@ print ("training : run: " , RUN , " lr: " , lr , " augment: " , krs.augmentTrain
 #     .JMML. `"bmmmdPY .JML.    YM   `"bmmd"' .JMML. .JMM..JMMmmmmMMM
 #
 
-nb_classes = 2
+if funcs.whatToPredict == "survival":
+    funcs.NUMCLASSES = 2 
+elif funcs.whatToPredict == "stage":
+    funcs.NUMCLASSES = 3 
+elif funcs.whatToPredict == "histology":
+    funcs.NUMCLASSES = 4
+
 funcs.RUN = RUN
 funcs.mode = mode
 funcs.imgSize = imgSize
@@ -173,7 +180,7 @@ with tf.device('/gpu:0'):
 
 
     # add last dense and softmax
-    model.add(Dense(nb_classes , activity_regularizer = regul ))
+    model.add(Dense(funcs.NUMCLASSES , activity_regularizer = regul ))
     model.add(BatchNormalization())
     model.add(Activation('softmax'))
 
@@ -230,15 +237,5 @@ with tf.device('/gpu:0'):
                     # class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
-
-
-
-
-
-
-
-
-
-
 
 

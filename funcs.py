@@ -132,12 +132,12 @@ def manageDataFramesEqually():
     return dataFrameTrain, dataFrameValidate,dataFrameTest
 
 
-# adjusted for only 2 datasets
+
 
 def manageDataFrames():
     trainList = ["nsclc_rt"]  # , , , ,  ,"oncopanel" , "moffitt","moffittSpore"  ,"oncomap" , ,"lung3" 
-    validateList = ["lung1"] # leave empty
-    testList = ["lung2"] # split to val and test
+    validateList = ["lung2"] 
+    testList = ["lung1"] # split to val and test
 
     dataFrame = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
     dataFrame = dataFrame [ 
@@ -147,8 +147,8 @@ def manageDataFrames():
         ( pd.isnull( dataFrame["patch_failed"] ) ) &
         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
         ( pd.notnull( dataFrame["surv2yr"] ) )  &
-        ( pd.notnull( dataFrame["histology_grouped"] ) ) #  &
-        # ( pd.notnull( dataFrame["stage"] ) ) 
+        ( pd.notnull( dataFrame["histology_grouped"] ) )  &
+        ( pd.notnull( dataFrame["stage"] ) ) 
         # ( pd.notnull( dataFrame["age"] ) )  
         ]
    
@@ -165,10 +165,10 @@ def manageDataFrames():
 
     
     # #2# use 1,2,3 stages no 1
-    # stageToInclude = [1.0,2.0,3.0]
-    # dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
-    # dataFrame = dataFrame.reset_index(drop=True)
-    # print ("all patients: " , dataFrame.shape)
+    stageToInclude = [1.0,2.0,3.0]
+    dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+    dataFrame = dataFrame.reset_index(drop=True)
+    print ("all patients: " , dataFrame.shape)
 
         
     ###### GET TRAINING / VALIDATION 
@@ -182,69 +182,16 @@ def manageDataFrames():
     dataFrameTrain = dataFrameTrain.reset_index(drop=True)
     print ("train patients " , dataFrameTrain.shape)
 
-
-
-
-
-    thirty = int(dataFrameTrain.shape[0]*0.06)   ######################################
-    if thirty % 2 != 0:
-        thirty = thirty + 1
-
-
-
-    # get 0's and 1's.
-    zero = dataFrameTrain [  (dataFrameTrain['surv2yr']== 0.0)  ]
-    one = dataFrameTrain [  (dataFrameTrain['surv2yr']== 1.0)  ]
-
-    print ( zero.shape , one.shape )
-    # split to train and val
-    half = int(thirty/2.0)
-
-    trueList = [True for i in range (half)]
-
-    #
-    zeroFalseList = [False for i in range (zero.shape[0] - half )]
-    zero_msk = trueList + zeroFalseList
-    random.seed(41)
-    random.shuffle(zero_msk)
-    zero_msk = np.array(zero_msk)
-    #
-    oneFalseList = [False for i in range (one.shape[0] - half )]
-    one_msk = trueList + oneFalseList
-    random.seed(41)
-    random.shuffle(one_msk)
-    one_msk = np.array(one_msk)
-
-
-
-    # TRAIN
-    zero_train = zero[~zero_msk]
-    one_train = one[~one_msk]
-    dataFrameTrain = pd.DataFrame()
-    dataFrameTrain = dataFrameTrain.append( zero_train )  #.sample( frac=0.73 , random_state = 42 ) 
-    dataFrameTrain = dataFrameTrain.append(one_train)
-    dataFrameTrain = dataFrameTrain.sample( frac=1 , random_state = 42 )
-    dataFrameTrain = dataFrameTrain.reset_index(drop=True)
-    print ('final - train size:' , dataFrameTrain.shape)
-
-
-    # VALIDATE
-    zero_val = zero[zero_msk]
-    one_val = one[one_msk]
-    dataFrameValidate = pd.DataFrame()
-    dataFrameValidate = dataFrameValidate.append(zero_val)
-    dataFrameValidate = dataFrameValidate.append(one_val)
-    dataFrameValidate = dataFrameValidate.sample( frac=1 , random_state = 42 )
+    # Val
+    dataFrameValidate = dataFrame [ dataFrame["dataset"].isin(validateList) ]
     dataFrameValidate = dataFrameValidate.reset_index(drop=True)
-    print ('final - validate size:' , dataFrameValidate.shape)
-
+    print ("final - val size : " , dataFrameValidate.shape)
 
     # TEST
     dataFrameTest = dataFrame [ dataFrame["dataset"].isin(testList) ]
     dataFrameTest = dataFrameTest.reset_index(drop=True)
     print ("final - test size : " , dataFrameTest.shape)
 
-    
 
     return dataFrameTrain,dataFrameValidate,dataFrameTest 
 
@@ -262,7 +209,7 @@ def manageDataFrames():
 #         # ( pd.notnull( dataFrame["surv1yr"] ) )  &
 #         ( pd.notnull( dataFrame["surv2yr"] ) )  &
 #         ( pd.notnull( dataFrame["histology_grouped"] ) ) #  &
-#         # ( pd.notnull( dataFrame["stage"] ) ) 
+#         ( pd.notnull( dataFrame["stage"] ) ) 
 #         # ( pd.notnull( dataFrame["age"] ) )  
 #         ]
    
@@ -279,10 +226,10 @@ def manageDataFrames():
 
     
 #     # #2# use 1,2,3 stages no 1
-#     # stageToInclude = [1.0,2.0,3.0]
-#     # dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
-#     # dataFrame = dataFrame.reset_index(drop=True)
-#     # print ("all patients: " , dataFrame.shape)
+#     stageToInclude = [1.0,2.0,3.0]
+#     dataFrame = dataFrame [ dataFrame.stage.isin(stageToInclude) ]
+#     dataFrame = dataFrame.reset_index(drop=True)
+#     print ("all patients: " , dataFrame.shape)
 
         
 #     ###### GET TRAINING / VALIDATION 
@@ -409,7 +356,13 @@ def getXandY(dataFrame,imgSize):
         arrList.append (  arr )  
 
         # Y #
-        y.append ( int(dataFrame.surv2yr[i])  )
+        if whatToPredict == "survival":
+            y.append ( int(dataFrame.surv2yr[i])  )
+        elif whatToPredict == "stage":
+            y.append ( int(dataFrame.stage[i])  )
+        elif whatToPredict == "histology":
+            y.append ( int(dataFrame.histology_grouped[i])  )
+
 
         # zeros and ones
         if int(dataFrame.surv2yr[i]) == 1:
@@ -427,7 +380,7 @@ def getXandY(dataFrame,imgSize):
     # after loop
     arrList = np.array(arrList, 'float32')
     y = np.array(y, 'int8')
-    y = np_utils.to_categorical(y, 2)
+    y = np_utils.to_categorical(y, NUMCLASSES)  
     # clincical = np.array(clincical , 'float32'  )
     return arrList,y,zeros,ones # ,clincical
 
@@ -476,15 +429,14 @@ def make2dConvModel(imgSize,regul):
 
     model = Sequential()
 
-    model.add(Convolution2D(48, 3, 3,  border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
+    model.add(Convolution2D(48, 7, 7,  border_mode='valid', dim_ordering='tf', input_shape=[imgSize,imgSize,1] , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
     # model.add(MaxPooling2D(pool_size=(3, 3)  )) 
 
 
-
-    model.add(Convolution2D(96, 3, 3 ,  border_mode='valid', activity_regularizer = regul )) # 32
+    model.add(Convolution2D(96, 5, 5 ,  border_mode='valid', activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
@@ -542,9 +494,9 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model = Sequential()
 
     if fork:
-        model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+        model.add(Convolution3D(64, 1, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
     else:
-        model.add(Convolution3D(64, 3, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
+        model.add(Convolution3D(64, 1, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
         # model.add(Convolution3D(48, 5, 5, 5, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
 
     model.add(BatchNormalization())
@@ -598,12 +550,24 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
 # new normalization method
 # get mean and std from training
 def centerAndNormalize(arr):
+    # out = arr
+    # #
+
+    # out -= 1000.0
+    # out /= 2000.0
+    #
+
     out = arr
-    #
-    out -= 1000.0
-    out /= 2000.0
-    #
-    return out
+
+    oldMin = -1024
+    oldRange = 3071+1024
+
+    newRange = 1
+    newMin = 0
+
+    sikoAll = ((( out  - oldMin) * newRange) / oldRange) + newMin
+
+    return sikoAll
 
 # get mean and std from training
 def centerAndStandardizeTraining(arr):
@@ -627,19 +591,19 @@ def centerAndStandardizeValTest(arr,mean,std):
     return out
 
 
-def AUC(test_labels,test_prediction):
-    n_classes = 2
+def AUC(test_labels,test_prediction,nb):
+
     # http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#sphx-glr-auto-examples-model-selection-plot-roc-py
     # Compute ROC curve and ROC area for each class
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
-    for i in range(n_classes):
+    for i in range(nb):
         # ( actual labels, predicted probabilities )
         fpr[i], tpr[i], _ = roc_curve(test_labels[:, i], test_prediction[:, i] ) # flip here
         roc_auc[i] = auc(fpr[i], tpr[i])
 
-    return round(roc_auc[0],3) , round(roc_auc[1],3)
+    return [ round(roc_auc[x],3) for x in range(nb) ] 
 
 def AUCalt( test_labels , test_prediction):
     # convert to non-categorial
@@ -650,6 +614,7 @@ def AUCalt( test_labels , test_prediction):
     # get auc
     myAuc = auc(fpr, tpr)
     return myAuc
+
 
 
 class Histories(keras.callbacks.Callback):
@@ -794,7 +759,8 @@ class Histories(keras.callbacks.Callback):
         logits = np.array(logits)
 
         print ("logits: " , logits.shape , logits[0]    )
-        auc1 , auc2 = AUC(  self.y_val ,  logits )
+        auc1 , auc2 = AUC(  self.y_val ,  logits , NUMCLASSES )
+
         print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
         print ("wtf2")
 

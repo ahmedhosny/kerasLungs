@@ -11,13 +11,15 @@ from keras import backend as K
 
 
 # current version
-RUN = "89"
+RUN = "99"
 # you want 2d or 3d convolutions?
 mode = "3d"
+# what to predict
+whatToPredict = "survival"
 # you want single architecture or 3-way architecture
 fork = True
 # final size should not be greater than 150
-finalSize = 60
+finalSize = 70
 # size of minipatch fed to net
 imgSize = 60
 # for 3d + fork , # of slices to take in each direction
@@ -31,6 +33,16 @@ MULVAL = 1
 
 # print 
 print ("training : run: " , RUN )
+
+
+funcs.whatToPredict = whatToPredict
+if whatToPredict == "survival":
+    NUMCLASSES = 2 
+elif whatToPredict == "stage":
+    NUMCLASSES = 3 
+elif whatToPredict == "histology":
+    NUMCLASSES = 4
+funcs.NUMCLASSES = NUMCLASSES
 
 #
 #
@@ -213,7 +225,8 @@ if MUL:
 print ("logits: " , logits.shape   ) # , logits[0] , logits[30]
 
 # auc ver 2
-myAuc = funcs.AUCalt( y_test , logits)
+myAuc = auc1 , auc2 = funcs.AUC(  y_test ,  logits , NUMCLASSES )
+# myAuc = funcs.AUCalt( y_test , logits)
 print ("\nauc: " , myAuc )
 
 
