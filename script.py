@@ -22,7 +22,7 @@ from keras import regularizers
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
 # current version
-RUN = "101" 
+RUN = "103" 
 
 # what to predict
 funcs.whatToPredict = "survival" # stage  # histology
@@ -50,13 +50,13 @@ skip = 1
 # random minipatch is done regardless. This bool controls flipping and rotation
 krs.augmentTraining = True
 
-LRELUalpha = 0.3
-regul = regularizers.l2(0.) # 0.0001
+LRELUalpha = 0.1
+regul = regularizers.l2(0.00001) # 0.0001
 
 # others...
 batch_size = 32
 nb_epoch = 1000
-lr = 0.0001 
+lr = 0.001 
 
 # print 
 print ("training : run: " , RUN , " lr: " , lr , " augment: " , krs.augmentTraining )
