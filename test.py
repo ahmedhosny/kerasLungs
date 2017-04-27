@@ -11,7 +11,7 @@ from keras import backend as K
 
 
 # current version
-RUN = "103"
+RUN = "106"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # what to predict
@@ -29,7 +29,7 @@ count = 1
 skip = 1
 #
 MUL = False # if false, set MULVAL to 1
-MULVAL = 1
+MULVAL =  1
 
 # print 
 print ("training : run: " , RUN )

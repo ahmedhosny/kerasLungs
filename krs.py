@@ -216,6 +216,7 @@ def splitValTest(x_valTest,finalSize,imgSize,count,mode,fork,skip):
         miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
 
 
+
         # EXTRACT ORIENTATION SLICES
         travel = int(count * skip)
         mid  = int(imgSize/2.0)
@@ -287,43 +288,46 @@ def splitValTestMul(x_valTest,finalSize,imgSize,count,mode,fork,skip):
 
         for j in range(0,9):
 
-            # gets the patch at the center
-            miniPatch = getMiniPatch(j,offsetArr,imgSize)
+            for k in range(0,4):
 
-            # reshape to make channel
-            miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
+                # gets the patch at the center
+                miniPatch = getMiniPatch(j,offsetArr,imgSize)
 
+                # reshape to make channel
+                miniPatch = miniPatch.reshape(imgSize,imgSize,imgSize,1)
 
-            # EXTRACT ORIENTATION SLICES
-            travel = int(count * skip)
-            mid  = int(imgSize/2.0)
+                miniPatch = getMulFlips(k,miniPatch)
 
-            if fork:
+                # EXTRACT ORIENTATION SLICES
+                travel = int(count * skip)
+                mid  = int(imgSize/2.0)
 
-                if mode == "3d":
-                    #
-                    arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
-                    #
-                    arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
-                    arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
-                    #
-                    arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
-                    arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
+                if fork:
 
-                elif mode == "2d":
-                    #
-                    arr_a_list.append( miniPatch [mid,:,:] )
-                    arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
-                    arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
+                    if mode == "3d":
+                        #
+                        arr_a_list.append( miniPatch [(mid-travel):(mid+travel+1):skip,:,:] )
+                        #
+                        arr_s = miniPatch [:,:,(mid-travel):(mid+travel+1):skip]
+                        arr_s_list.append( np.swapaxes( np.rot90(arr_s,3) , 0,2).reshape(count*2+1,imgSize,imgSize,1)  )
+                        #
+                        arr_c = miniPatch [:,(mid-travel):(mid+travel+1):skip,:]
+                        arr_c_list.append( np.swapaxes(np.flipud (arr_c) ,0,1).reshape(count*2+1,imgSize,imgSize,1) )
 
-            else:
+                    elif mode == "2d":
+                        #
+                        arr_a_list.append( miniPatch [mid,:,:] )
+                        arr_s_list.append( np.flipud ( miniPatch [:,:,mid] ) )
+                        arr_c_list.append( np.flipud ( miniPatch [:,mid,:] ) )
 
-                if mode == "3d":
-                    # EXTRACT SINGLE
-                    arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
-                    # arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
-                elif mode == "2d":
-                    arr_list.append (  miniPatch [mid,:,:] ) # only axial
+                else:
+
+                    if mode == "3d":
+                        # EXTRACT SINGLE
+                        arr_list.append (  miniPatch [  0:imgSize:skip , 0:imgSize:skip  , 0:imgSize:skip  ] )
+                        # arr_list.append (  miniPatch [ (mid-travel) : (mid+travel+1) : skip ,:,:]  )
+                    elif mode == "2d":
+                        arr_list.append (  miniPatch [mid,:,:] ) # only axial
 
 
 
@@ -394,3 +398,16 @@ def getMiniPatch(rand,arr,imgSize):
     elif rand == 8:
         return arr[lower:maxi,lower:maxi,0:imgSize]  
 
+
+def getMulFlips(swit,arr):
+
+    if swit == 0:
+        out=arr
+    elif swit == 1:
+        out=np.fliplr(arr) 
+    elif swit == 2:
+        out=np.flipud(arr) 
+    elif swit == 3:
+        out=arr[:,:,::-1]
+
+    return out

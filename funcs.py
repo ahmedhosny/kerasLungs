@@ -549,19 +549,19 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(convDrop))
 
-    model.add(Convolution3D(96, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(128, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
     model.add(MaxPooling3D(pool_size=(3, 3, 3 ))) ### 
     model.add(Dropout(convDrop))
     
-    model.add(Convolution3D(192, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(256, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(convDrop))
     
-    model.add(Convolution3D(384, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(512, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 

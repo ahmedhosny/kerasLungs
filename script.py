@@ -22,7 +22,7 @@ from keras import regularizers
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
 # current version
-RUN = "103" 
+RUN = "106" 
 
 # what to predict
 funcs.whatToPredict = "survival" # stage  # histology
