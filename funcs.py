@@ -359,9 +359,9 @@ def getXandY(dataFrame,imgSize):
         if whatToPredict == "survival":
             y.append ( int(dataFrame.surv2yr[i])  )
         elif whatToPredict == "stage":
-            y.append ( int(dataFrame.stage[i])  )
+            y.append ( int(dataFrame.stage[i]) -1  )
         elif whatToPredict == "histology":
-            y.append ( int(dataFrame.histology_grouped[i])  )
+            y.append ( int(dataFrame.histology_grouped[i]) -1 )
 
 
         # zeros and ones
@@ -486,6 +486,52 @@ def make2dConvModel(imgSize,regul):
     return model
 
 
+# def make3dConvModel(imgSize,count,fork,skip,regul):
+#     #(samples, rows, cols, channels) if dim_ordering='tf'.
+    
+#     convDrop = 0.25
+
+#     model = Sequential()
+
+#     if fork:
+#         model.add(Convolution3D(64, 1, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+#     else:
+#         model.add(Convolution3D(64, 1, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
+#         # model.add(Convolution3D(48, 5, 5, 5, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(Dropout(convDrop))
+
+#     model.add(Convolution3D(96, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+#     model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
+#     model.add(Dropout(convDrop))
+    
+#     model.add(Convolution3D(192, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(Dropout(convDrop))
+    
+#     model.add(Convolution3D(384, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+
+#     model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
+#     model.add(Dropout(convDrop))
+
+
+#     model.add(Flatten())
+#     model.add(Dense(512 , activity_regularizer = regul )) # 512
+#     model.add(BatchNormalization())
+#     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+#     model.add(Dropout(0.5))
+    
+#     return model
+
+
 def make3dConvModel(imgSize,count,fork,skip,regul):
     #(samples, rows, cols, channels) if dim_ordering='tf'.
     
@@ -494,32 +540,32 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model = Sequential()
 
     if fork:
-        model.add(Convolution3D(64, 1, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
+        model.add(Convolution3D(64, 5, 5, 5, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
     else:
-        model.add(Convolution3D(64, 1, 3, 3, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
+        model.add(Convolution3D(64, 5, 5, 5, border_mode='valid',dim_ordering='tf',input_shape=[imgSize/skip,imgSize/skip,imgSize/skip,1] , activity_regularizer = regul )) # 32
         # model.add(Convolution3D(48, 5, 5, 5, border_mode='valid',dim_ordering='tf',input_shape=[count*2+1,imgSize,imgSize,1] , activity_regularizer = regul)) # 32
 
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(convDrop))
 
-    model.add(Convolution3D(96, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(96, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-    model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
+    model.add(MaxPooling3D(pool_size=(3, 3, 3 ))) ### 
     model.add(Dropout(convDrop))
     
-    model.add(Convolution3D(192, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(192, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
     model.add(Dropout(convDrop))
     
-    model.add(Convolution3D(384, 1, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
+    model.add(Convolution3D(384, 3, 3, 3 ,  border_mode='valid' , activity_regularizer = regul )) # 32
     model.add(BatchNormalization())
     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
 
-    model.add(MaxPooling3D(pool_size=(1, 3, 3 ))) ### 
+    model.add(MaxPooling3D(pool_size=(3, 3, 3 ))) ### 
     model.add(Dropout(convDrop))
 
 
@@ -530,8 +576,6 @@ def make3dConvModel(imgSize,count,fork,skip,regul):
     model.add(Dropout(0.5))
     
     return model
-
-
 
 
 
@@ -759,15 +803,15 @@ class Histories(keras.callbacks.Callback):
         logits = np.array(logits)
 
         print ("logits: " , logits.shape , logits[0]    )
-        auc1 , auc2 = AUC(  self.y_val ,  logits , NUMCLASSES )
+        aucs = AUC(  self.y_val ,  logits , NUMCLASSES )
 
-        print ("\nauc1: " , auc1 , "  auc2: " ,  auc2)
+        print ("\naucs: " , aucs)
         print ("wtf2")
 
         # # before appending, check if this auc is the highest in all the list, if yes save the h5 model
         #
         if epoch > 10:
-            if all(auc1>i for i in self.auc):
+            if all(aucs[0]>i for i in self.auc):
                 self.model.save_weights("/home/ahmed/output/" + RUN + "_model.h5")
                 print("Saved model to disk")
                 # save model and json representation
@@ -780,7 +824,7 @@ class Histories(keras.callbacks.Callback):
         np.save( "/home/ahmed/output/" + RUN + "_train_loss.npy", self.train_loss) 
 
         # append and save auc
-        self.auc.append(auc1)
+        self.auc.append(aucs[0])
         np.save( "/home/ahmed/output/" + RUN + "_auc.npy", self.auc)
 
         # append and save logits

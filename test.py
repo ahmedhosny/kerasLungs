@@ -11,22 +11,22 @@ from keras import backend as K
 
 
 # current version
-RUN = "99"
+RUN = "101"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # what to predict
 whatToPredict = "survival"
 # you want single architecture or 3-way architecture
-fork = True
+fork = False
 # final size should not be greater than 150
-finalSize = 70
+finalSize = 50
 # size of minipatch fed to net
-imgSize = 60
+imgSize = 40
 # for 3d + fork , # of slices to take in each direction
 count = 1
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 3
+skip = 1
 #
 MUL = False # if false, set MULVAL to 1
 MULVAL = 1
@@ -194,9 +194,9 @@ for i in range ( valOrTest.shape[0] * MULVAL ):
             y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize,imgSize,1) ] )
 
     if MUL:
-        print ( y_pred [0][0] , y_pred [0][1] ,  y_test_print[i]  ) 
+        print ( y_pred [0] ,  y_test_print[i]  ) 
     else:
-        print ( y_pred [0][0] , y_pred [0][1] ,  int( valOrTest.surv2yr[i] )  ) 
+        print ( y_pred [0] ,  int( valOrTest.surv2yr[i] )  ) 
     # now after down with switching
     logits.append( y_pred[0] )
 
@@ -225,7 +225,7 @@ if MUL:
 print ("logits: " , logits.shape   ) # , logits[0] , logits[30]
 
 # auc ver 2
-myAuc = auc1 , auc2 = funcs.AUC(  y_test ,  logits , NUMCLASSES )
+myAuc  = funcs.AUC(  y_test ,  logits , NUMCLASSES )
 # myAuc = funcs.AUCalt( y_test , logits)
 print ("\nauc: " , myAuc )
 
