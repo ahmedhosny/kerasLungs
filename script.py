@@ -22,7 +22,7 @@ from keras import regularizers
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
 # current version
-RUN = "106" 
+RUN = "120" 
 
 # what to predict
 funcs.whatToPredict = "survival" # stage  # histology
@@ -34,17 +34,17 @@ mode = "3d"
 fork = False
 
 # final size should not be greater than 150
-finalSize = 50 
+finalSize = 60 
 
 # size of minipatch fed to net
-imgSize = 40
+imgSize = 50
 
 # for 3d + fork , # of slices to take in each direction
 count = 1
 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 1
+skip = 2
 
 # augment while training?
 # random minipatch is done regardless. This bool controls flipping and rotation
@@ -54,7 +54,7 @@ LRELUalpha = 0.1
 regul = regularizers.l2(0.00001) # 0.0001
 
 # others...
-batch_size = 32
+batch_size = 16
 nb_epoch = 1000
 lr = 0.001 
 

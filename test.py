@@ -11,7 +11,7 @@ from keras import backend as K
 
 
 # current version
-RUN = "106"
+RUN = "___120_130_3"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # what to predict
@@ -19,14 +19,14 @@ whatToPredict = "survival"
 # you want single architecture or 3-way architecture
 fork = False
 # final size should not be greater than 150
-finalSize = 50
+finalSize = 130
 # size of minipatch fed to net
-imgSize = 40
+imgSize = 120
 # for 3d + fork , # of slices to take in each direction
 count = 1
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 1
+skip = 3
 #
 MUL = False # if false, set MULVAL to 1
 MULVAL =  1
