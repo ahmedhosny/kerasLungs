@@ -35,25 +35,28 @@ fork = False
 
 # max arr size is 50 with 16 batchSize
 
-lista = [ [30,40,1] , [40,50,1] , [50,60,1] , [60,70,2] , [80,90,2] , [100,100,2] , [90,100,3] , [120,130,3] ]
+# lista = [ [30,40,1] , [40,50,1] , [50,60,1] , [60,70,2] , [80,90,2] , [100,100,2] , [90,100,3] , [120,130,3] ]
 
-for runatos in iter(lista):
+starta = 124
+
+for i in range(100):
 
     # current version
-    RUN = "___" + str(runatos[0]) + "_" + str(runatos[1]) + "_" + str(runatos[2])
+    RUN = str(starta)
+    starta+=1
 
     # final size should not be greater than 150
-    finalSize = runatos[1] 
+    finalSize = 60 
 
     # size of minipatch fed to net
-    imgSize = runatos[0]
+    imgSize = 50
 
     # for 3d + fork , # of slices to take in each direction
     count = 1
 
     # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
     # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-    skip = runatos[2]
+    skip = 1
 
     # augment while training?
     # random minipatch is done regardless. This bool controls flipping and rotation

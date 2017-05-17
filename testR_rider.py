@@ -1,0 +1,211 @@
+import funcs
+import krs
+from keras.models import model_from_json
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from keras import backend as K
+
+
+# current version
+RUN = "120"
+# you want 2d or 3d convolutions?
+mode = "3d"
+# you want single architecture or 3-way architecture
+fork = False
+# final size should not be greater than 150
+finalSize = 60 
+# size of minipatch fed to net
+imgSize = 50 
+# for 3d + fork , # of slices to take in each direction
+count = 1 
+# for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
+# for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
+skip = 1
+
+# print 
+print ("training : run: " , RUN )
+
+
+
+
+rider = "test"
+
+dataFrameTest = funcs.manageDataFramesRIDER()  ###############change
+print (dataFrameTest)
+
+x_test =  funcs.getX(dataFrameTest,imgSize)
+print ("test data:" , x_test.shape ) 
+
+# center and standardize
+# x_test_cs = funcs.centerAndStandardizeValTest(x_test,mean,std)
+x_test_cs = funcs.centerAndNormalize(x_test)
+
+if fork:
+    # lets get the 3 orientations
+    x_test_a,x_test_s,x_test_c = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
+    print ("final val data:" , x_test_a.shape,x_test_s.shape,x_test_c.shape)
+
+else:
+    x_test = krs.splitValTest(x_test_cs,finalSize,imgSize,count,mode,fork,skip)
+    print ("final val data:" , x_test.shape)
+
+
+#
+#
+#       .g8"""bgd `7MM"""YMM MMP""MM""YMM     `7MMM.     ,MMF' .g8""8q. `7MM"""Yb. `7MM"""YMM  `7MMF'
+#     .dP'     `M   MM    `7 P'   MM   `7       MMMb    dPMM .dP'    `YM. MM    `Yb. MM    `7    MM
+#     dM'       `   MM   d        MM            M YM   ,M MM dM'      `MM MM     `Mb MM   d      MM
+#     MM            MMmmMM        MM            M  Mb  M' MM MM        MM MM      MM MMmmMM      MM
+#     MM.    `7MMF' MM   Y  ,     MM            M  YM.P'  MM MM.      ,MP MM     ,MP MM   Y  ,   MM      ,
+#     `Mb.     MM   MM     ,M     MM            M  `YM'   MM `Mb.    ,dP' MM    ,dP' MM     ,M   MM     ,M
+#       `"bmmmdPY .JMMmmmmMMM   .JMML.        .JML. `'  .JMML. `"bmmd"' .JMMmmmdP' .JMMmmmmMMM .JMMmmmmMMM
+#
+#
+
+# load json and create model
+json_file = open( "/home/ahmed/output/" + RUN + '_json.json' , 'r')
+loaded_model_json = json_file.read()
+json_file.close()
+myModel = model_from_json(loaded_model_json)
+# load weights into new model
+myModel.load_weights("/home/ahmed/output/" + RUN + "_model.h5")
+
+
+# make funcs
+# to befire last dense - size 256
+func1 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[23].output ] )
+# to last dense - size 2
+func2 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[27].output ] )
+
+
+func1List = []
+func2List = []
+
+for i in range (dataFrameTest.shape[0]):
+
+    if fork: 
+
+        if mode == "3d":
+            inputa = [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) , 0 ]
+
+            func1out = func1( inputa )
+            func2out = func2( inputa )
+
+        elif mode == "2d":
+            inputa = [ x_test_a[i].reshape(1,imgSize,imgSize,1) , 
+                x_test_s[i].reshape(1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,imgSize,imgSize,1) , 0 ]
+
+            func1out = func1( inputa )
+            func2out = func2( inputa )
+
+    else:
+
+        if mode == "3d":
+            inputa =  [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) , 0 ]
+            func1out = func1( inputa )
+            func2out = func2( inputa )
+
+        elif mode == "2d":
+            inputa =  [ x_test[i].reshape(1,imgSize,imgSize,1) , 0 ]
+            func1out = func1( inputa )
+            func2out = func2( inputa )
+
+
+    func1List.append(func1out[0][0])
+    func2List.append(func2out[0][0])
+
+    
+func1List = np.array(func1List).transpose()
+func2List = np.array(func2List).transpose()
+
+print ( "funcs transpose shape: " , func1List.shape , func2List.shape )
+
+for i in range ( func1List.shape[0] ):
+    dataFrameTest['dense1_' + str (i)] = func1List[i]
+
+for i in range ( func2List.shape[0] ):
+    dataFrameTest['dense2_' + str (i)] = func2List[i]
+
+
+#
+#
+#     `7MMF'        .g8""8q.     .g8""8q. `7MM"""Mq.
+#       MM        .dP'    `YM. .dP'    `YM. MM   `MM.
+#       MM        dM'      `MM dM'      `MM MM   ,M9
+#       MM        MM        MM MM        MM MMmmdM9
+#       MM      , MM.      ,MP MM.      ,MP MM
+#       MM     ,M `Mb.    ,dP' `Mb.    ,dP' MM
+#     .JMMmmmmMMM   `"bmmd"'     `"bmmd"' .JMML.
+#
+#
+
+logits = []
+#
+for i in range (dataFrameTest.shape[0]):
+
+
+    if fork: 
+
+        if mode == "3d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_s[i].reshape(1,count*2+1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,count*2+1,imgSize,imgSize,1) ]  )
+
+        elif mode == "2d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test_a[i].reshape(1,imgSize,imgSize,1) ,
+                x_test_s[i].reshape(1,imgSize,imgSize,1) , 
+                x_test_c[i].reshape(1,imgSize,imgSize,1) ]  )
+
+    else:
+
+        if mode == "3d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
+
+        elif mode == "2d":
+            # get predictions
+            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize,imgSize,1) ] )
+
+
+    print ( y_pred [0] )
+    # now after down with switching
+    logits.append( y_pred[0] )
+
+
+# add logit column
+dataFrameTest['logit_0'] = [ x[0] for x in logits ]
+dataFrameTest['logit_1'] = [ x[1] for x in logits ]
+
+
+
+dataFrameTest.to_csv("/home/ahmed/output/" + RUN + "_" + rider + "_dataFrame.csv" )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

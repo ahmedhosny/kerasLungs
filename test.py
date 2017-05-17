@@ -11,7 +11,7 @@ from keras import backend as K
 
 
 # current version
-RUN = "___120_130_3"
+RUN = "120"
 # you want 2d or 3d convolutions?
 mode = "3d"
 # what to predict
@@ -19,14 +19,14 @@ whatToPredict = "survival"
 # you want single architecture or 3-way architecture
 fork = False
 # final size should not be greater than 150
-finalSize = 130
+finalSize = 60
 # size of minipatch fed to net
-imgSize = 120
+imgSize = 50
 # for 3d + fork , # of slices to take in each direction
 count = 1
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 3
+skip = 1
 #
 MUL = False # if false, set MULVAL to 1
 MULVAL =  1
@@ -91,8 +91,8 @@ dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 valOrTest = dataFrameTest # dataFrameValidate #  
 
-x_test,y_test,zeros,ones =  funcs.getXandY(valOrTest,imgSize)  
-print ("test data:" , x_test.shape,  y_test.shape  ) 
+x_test,y_test,zeros,ones,clinical_test =  funcs.getXandY(valOrTest,imgSize)  
+print ("test data:" , x_test.shape,  y_test.shape , clinical_test.shape ) 
 print ("zeros: " , zeros , "ones: " , ones)
 
 
@@ -185,7 +185,7 @@ for i in range ( valOrTest.shape[0] * MULVAL ):
 
         if mode == "3d":
             # get predictions
-            y_pred = myModel.predict_on_batch ( [ x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) 
+            y_pred = myModel.predict_on_batch ( [  x_test[i].reshape(1,imgSize/skip,imgSize/skip,imgSize/skip,1) ] ) # clinical_test[i].reshape(1,3) ,
             # y_pred = myModel.predict_on_batch ( [ x_test
             #     [i].reshape(1,count*2+1,imgSize,imgSize,1) ])
 
@@ -210,7 +210,7 @@ print ( "predicted val ones: "  , len( [ x for x in  logits if x[0] < x[1]  ] ) 
 
 logits = np.array(logits)
 # save logits
-np.save( "/home/ahmed/output/" + RUN + "_test_logits.npy", logits )
+np.save( "/home/ahmed/output/" + RUN + "_test_logits_allStages.npy", logits )
 
 print ("logits: " , logits.shape , logits[0] , logits[30]  )
 

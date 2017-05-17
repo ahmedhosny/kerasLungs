@@ -8,20 +8,20 @@ from keras import backend as K
 
 
 # current version
-RUN = "55"
+RUN = "120"
 # you want 2d or 3d convolutions?
-mode = "2d"
+mode = "3d"
 # you want single architecture or 3-way architecture
 fork = False
 # final size should not be greater than 150
-finalSize = 120 
+finalSize = 60 
 # size of minipatch fed to net
-imgSize = 80 
+imgSize = 50 
 # for 3d + fork , # of slices to take in each direction
-count = 3 
+count = 1 
 # for 3d + fork : number of slices to skip in that direction (2 will take every other slice) - can be any number
 # for 3d + no fork : number of slices to skip across the entire cube ( should be imgSize%skip == 0  )
-skip = 2
+skip = 1
 
 # print 
 print ("training : run: " , RUN )
@@ -41,7 +41,7 @@ print ("training : run: " , RUN )
 #
 #
 
-dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
+# dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 #
 #
@@ -78,7 +78,7 @@ dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFramesEqually()
 
 # get dataframe first
 
-testList = ["lung2"] # split to val and test
+testList = ["lung1"] 
 
 dataFrameTest = pd.DataFrame.from_csv('master_170228.csv', index_col = 0)
 dataFrameTest = dataFrameTest [ 
@@ -134,9 +134,9 @@ myModel.load_weights("/home/ahmed/output/" + RUN + "_model.h5")
 
 # make funcs
 # to befire last dense - size 256
-func1 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[21].output ] )
+func1 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[23].output ] )
 # to last dense - size 2
-func2 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[25].output ] )
+func2 = K.function([ myModel.layers[0].input , K.learning_phase()  ], [ myModel.layers[27].output ] )
 
 
 func1List = []
