@@ -23,7 +23,7 @@ import time
 
 # augments, randmoizes and splits into batches.
 # 
-def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count, batchSize, mode, fork, skip): 
+def augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count, batchSize, mode, fork, skip): 
     
     # for forking
     arr_a_list = []
@@ -134,8 +134,7 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
         # now the label
         y_train_out = np.split  (     y_train                    [idx] [:batchProper]   , noOfBatches )     
 
-
-        return a_train,s_train,c_train,y_train_out ,clinical_train_out
+        return a_train,s_train,c_train,y_train_out 
 
     else:
 
@@ -148,23 +147,22 @@ def augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,
         # reorder all and take first batch*int entries i.e. leave remainder out, then split
         x_train_new = np.split  (   np.array( arr_list, 'float32') [idx] [:batchProper]   , noOfBatches )
         #
-        y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )   
-        clinical_train_out = np.split  (   clinical_train         [idx] [:batchProper]   , noOfBatches )  
+        y_train_out = np.split  (     y_train                     [idx] [:batchProper]   , noOfBatches )     
 
-        return x_train_new,y_train_out,clinical_train_out
+        return x_train_new,y_train_out
 
 
 
 
 # runs every epoch
-def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize,mode,fork,skip): # clinical_train,
+def myGenerator(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip): # clinical_train,
 
     while True:
         
         #####
         if fork:
             # these are acually lists of batches
-            a_train,s_train,c_train,y_train_out = augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize,mode,fork,skip)
+            a_train,s_train,c_train,y_train_out = augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip)
 
             batches = 0
             for   _a_train,_s_train,_c_train,_y_train in zip(
@@ -179,13 +177,13 @@ def myGenerator(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize
         #### 
         else:
             # these are acually lists of batches
-            x_train_out,y_train_out,clinical_train_out = augmentAndSplitTrain(x_train,y_train,clinical_train,finalSize,imgSize,count,batchSize,mode,fork,skip)
+            x_train_out,y_train_out = augmentAndSplitTrain(x_train,y_train,finalSize,imgSize,count,batchSize,mode,fork,skip)
 
             batches = 0
-            for   _x_train,_y_train,_clinical_train in zip( 
-                x_train_out,y_train_out,clinical_train_out ):
+            for   _x_train,_y_train in zip( 
+                x_train_out,y_train_out ):
 
-                yield [_clinical_train, _x_train ] , _y_train   
+                yield [ _x_train ] , _y_train   
 
                 batches += 1
                 if batches ==  len(x_train_out) :

@@ -15,6 +15,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.visualize_util import plot
 from keras import regularizers
+from keras.models import model_from_json
 
 # 2d + fork = axial,saggittal,coronal ( imgSize x imgSize )
 # 3d + fork = axial,saggittal,coronal ( count*2+1 x imgSize x imgSize )
@@ -22,10 +23,7 @@ from keras import regularizers
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
 # current version
-RUN = "160" 
-
-# transfer learning toggle
-tl = True
+RUN = "164" 
 
 # what to predict
 funcs.whatToPredict = "survival" # stage  # histology
@@ -34,7 +32,7 @@ funcs.whatToPredict = "survival" # stage  # histology
 mode = "3d"
 
 # you want single architecture or 3-way architecture
-fork = False # even though no fork, will fool it to work with clinical vector
+fork = False
 
 # final size should not be greater than 150
 finalSize = 60 
@@ -59,7 +57,7 @@ regul = regularizers.l2(0.00001) # 0.0001
 # others...
 batch_size = 16
 nb_epoch = 1000
-lr = 0.0001 
+lr = 0.001 
 
 # print 
 print ("training : run: " , RUN , " lr: " , lr , " augment: " , krs.augmentTraining )
@@ -108,8 +106,8 @@ funcs.LRELUalpha = LRELUalpha
 dataFrameTrain,dataFrameValidate,dataFrameTest= funcs.manageDataFrames()
 
 #2# get data
-x_train,y_train,zeros,ones, clinical  =  funcs.getXandY(dataFrameTrain,imgSize)
-print ("train data:" , x_train.shape,  y_train.shape , clinical.shape ) 
+x_train,y_train,zeros,ones =  funcs.getXandY(dataFrameTrain,imgSize)
+print ("train data:" , x_train.shape,  y_train.shape  ) 
 #
 print ("zeros: " , zeros , "ones: " , ones)
 zeroWeight = ones / ((ones+zeros)*1.0)
@@ -137,87 +135,74 @@ with tf.device('/gpu:0'):
 
     histories = funcs.Histories()
 
-    # build the model if there is no tl
-    if not tl:
     
-        if fork:
+    # if fork:
 
-            model = Sequential()
+    #     model = Sequential()
 
-            if mode == "3d":
-                model_A = funcs.make3dConvModel(imgSize,count,fork,skip,regul)  
-                model_S = funcs.make3dConvModel(imgSize,count,fork,skip,regul)  
-                model_C = funcs.make3dConvModel(imgSize,count,fork,skip,regul) 
+    #     if mode == "3d":
+    #         model_A = funcs.make3dConvModel(imgSize,count,fork,skip,regul)  
+    #         model_S = funcs.make3dConvModel(imgSize,count,fork,skip,regul)  
+    #         model_C = funcs.make3dConvModel(imgSize,count,fork,skip,regul) 
 
-            elif mode == "2d":
-                model_A = funcs.make2dConvModel(imgSize,regul)  
-                model_S = funcs.make2dConvModel(imgSize,regul)  
-                model_C = funcs.make2dConvModel(imgSize,regul)     
+    #     elif mode == "2d":
+    #         model_A = funcs.make2dConvModel(imgSize,regul)  
+    #         model_S = funcs.make2dConvModel(imgSize,regul)  
+    #         model_C = funcs.make2dConvModel(imgSize,regul)     
 
-            # 
-            model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1  )) #  output here is 512*3 
-            model.add(BatchNormalization())
-            model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-            model.add(Dropout(0.5))
-            #
-            model.add(Dense(512, activity_regularizer = regul  ))
-            model.add(BatchNormalization())
-            model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-            model.add(Dropout(0.5))
-            #
-            model.add(Dense(256 , activity_regularizer = regul ))
-            model.add(BatchNormalization())
-            model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-            model.add(Dropout(0.5))
+    #     # 
+    #     model.add(keras.engine.topology.Merge([ model_A, model_S, model_C  ], mode='concat', concat_axis=1  )) #  output here is 512*3 
+    #     model.add(BatchNormalization())
+    #     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    #     model.add(Dropout(0.5))
+    #     #
+    #     model.add(Dense(512, activity_regularizer = regul  ))
+    #     model.add(BatchNormalization())
+    #     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    #     model.add(Dropout(0.5))
+    #     #
+    #     model.add(Dense(256 , activity_regularizer = regul ))
+    #     model.add(BatchNormalization())
+    #     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    #     model.add(Dropout(0.5))
 
-        else:
-            # this is where I am working now..
-            if mode == "3d":
+    # else:
 
-                modelTemp = funcs.make3dConvModel(imgSize, count ,fork,skip,regul) # output here is 512
-               
+    #     if mode == "3d":
+    #         model = funcs.make3dConvModel(imgSize, count ,fork,skip,regul) # output here is 512
 
-            elif mode == "2d":
-                model = funcs.make2dConvModel(imgSize,regul) # output here is 512
+    #     elif mode == "2d":
+    #         model = funcs.make2dConvModel(imgSize,regul) # output here is 512
 
-            modelTemp.add(Dense(256 , activity_regularizer = regul ))
-            modelTemp.add(BatchNormalization())
-            modelTemp.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-            modelTemp.add(Dropout(0.5))
-
-            model = Sequential()
-            model1 = funcs.makeClinicalModel()
+    #     model.add(Dense(256 , activity_regularizer = regul ))
+    #     model.add(BatchNormalization())
+    #     model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
+    #     model.add(Dropout(0.5))
 
 
-            model.add(keras.engine.topology.Merge([ model1, modelTemp ], mode='concat', concat_axis=1  ))
-            model.add(BatchNormalization())
-            model.add(advanced_activations.LeakyReLU(alpha=LRELUalpha))
-            model.add(Dropout(0.5))
+    # # add last dense and softmax
+    # model.add(Dense(funcs.NUMCLASSES , activity_regularizer = regul ))
+    # model.add(BatchNormalization())
+    # model.add(Activation('softmax'))
 
 
 
-        # add last dense and softmax
-        model.add(Dense(funcs.NUMCLASSES , activity_regularizer = regul ))
-        model.add(BatchNormalization())
-        model.add(Activation('softmax'))
+    RUNTL = "120"
 
-    # if transfer learning - get model
-    else:
-
-        RUNTL = "120"
-
-        json_file = open( "/home/ahmed/output/" + RUNTL + '_json.json' , 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        model = model_from_json(loaded_model_json)
-        # load weights into new model
-        model.load_weights("/home/ahmed/output/" + RUNTL + "_model.h5")
+    json_file = open( "/home/ahmed/output/" + RUNTL + '_json.json' , 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    model = model_from_json(loaded_model_json)
+    # load weights into new model
+    model.load_weights("/home/ahmed/output/" + RUNTL + "_model.h5")
 
 
-        ## now decide which layers to be trained
-        # 23 - all convs + flatten dense
-        for layer in model.layers[:23]:
-            layer.trainable = False
+    ## now decide which layers to be trained
+    # 23 - all convs + flatten dense
+    for layer in model.layers[:27]:
+        layer.trainable = False
+
+
 
     myOptimizer = keras.optimizers.Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     model.compile(loss='categorical_crossentropy', optimizer=myOptimizer, metrics=['accuracy'])
@@ -267,10 +252,9 @@ with tf.device('/gpu:0'):
     #
 
     # fit the model
-    model.fit_generator( krs.myGenerator(x_train_cs,y_train,clinical,finalSize,imgSize,count,batch_size,mode,fork,skip) ,
+    model.fit_generator( krs.myGenerator(x_train_cs,y_train,finalSize,imgSize,count,batch_size,mode,fork,skip) ,
                     samples_per_epoch= ( x_train_cs.shape[0] - (x_train_cs.shape[0]%batch_size) ) ,
                     # class_weight={0 : zeroWeight, 1: oneWeight},
                     nb_epoch=nb_epoch,
                    callbacks=[histories])
-
 
