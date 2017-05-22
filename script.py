@@ -22,8 +22,16 @@ from keras.models import model_from_json
 # 2d + no fork = axial ( imgSize x imgSize )d
 # 3d + no fork = cube ( imgSize/skip,imgSize/skip,imgSize/skip )
 
+
+
+# RUNFIRST = 170
+# cutsList = [9,13,19,23,27]
+
+# for m in iter(cutsList):
+
 # current version
-RUN = "164" 
+RUN = "175"
+whereToCut = 27
 
 # what to predict
 funcs.whatToPredict = "survival" # stage  # histology
@@ -55,9 +63,9 @@ LRELUalpha = 0.1
 regul = regularizers.l2(0.00001) # 0.0001
 
 # others...
-batch_size = 16
-nb_epoch = 1000
-lr = 0.001 
+batch_size = 24
+nb_epoch = 4000
+lr = 0.01 
 
 # print 
 print ("training : run: " , RUN , " lr: " , lr , " augment: " , krs.augmentTraining )
@@ -198,8 +206,7 @@ with tf.device('/gpu:0'):
 
 
     ## now decide which layers to be trained
-    # 23 - all convs + flatten dense
-    for layer in model.layers[:27]:
+    for layer in model.layers[:whereToCut]:
         layer.trainable = False
 
 
